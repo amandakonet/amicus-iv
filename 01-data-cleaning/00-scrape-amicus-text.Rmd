@@ -1,0 +1,196 @@
+---
+title: "Tidy Amicus Data"
+author: "Amanda Konet"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T, warning = F, message = F, error = F)
+
+# Box access
+library(boxr)
+box_auth()
+
+# data manip?
+library(tidyverse)
+
+# parallel processing
+library(R.utils)
+library(doParallel)
+```
+
+# Purpose
+
+There are ~40 folders in Amicus IV > data > amicus files. For each amicus file (denoted by files with "amicus" or "amici" in the file name), copy the file ID, file name, case name, and file text into a CSV.
+
+
+# 1. Obtain file names and IDs
+
+Set working directory to amcius files folder
+
+```{r}
+box_setwd("146066009084")
+```
+
+Get IDs of all the case folders
+
+```{r}
+# Get the IDs of all the case folders 
+case_folders <- box_ls() %>%
+  as.data.frame() %>% 
+  filter(type == "folder") %>% 
+  rename(case = name)
+
+case_folders %>% head(1)
+```
+
+For all of the folders, retrieve every file name and ID. 
+
+```{r}
+# number of cores available
+n_cores <- detectCores() - 1
+
+# given a df of ids for SC folder, extract names and ids of all files in case folder
+# then, save only the name and id of the decision file
+all_file_names <- function(case_folder_ids) {
+  
+  # get info for all files contained in each case folder
+  # stored in a list of lists
+  cases_ids_list <- mclapply(case_folder_ids$id,
+                                box_ls,
+                                mc.cores = n_cores)
+  
+  # convert to list of df
+  cases_ids_list <- map(cases_ids_list, as.data.frame)
+  
+  # get name of folder (this is case name)
+  # NOTE path col is Amicus IV/data/amicus files/case name - we want the last bit "case name"
+  cases_ids_list <- lapply(cases_ids_list, function(x) transform(x, case = sub(".*/", "", path)))
+  
+  print("Created list of dfs; each element is a case folder")
+  
+  # create iterator that will go through list element by element
+  it <- iter(cases_ids_list, by = "row")
+  
+  # in each case folder, grab the name and id of the decision file
+  file_ids <-
+    foreach(i = it,
+            .combine = rbind,
+            .inorder = F) %dopar% {
+              i %>%
+                filter(grepl("amicus|amici", name, ignore.case = T)) %>%
+                select(case, name, id)
+            }
+  print("Obtained amicus file ids")
+  
+  return(file_ids)
+}
+
+# run the function for Abortion and Sex Discrim folders
+amicus_file_ids <- all_file_names(case_folders)
+
+doParallel::stopImplicitCluster()
+```
+
+
+Check what we have - count of amicus briefs by case for manual comparision
+
+```{r}
+# save this file to data > processed amicus files
+amicus_file_ids %>% 
+  right_join(., case_folders, "case") %>% 
+  group_by(case) %>% 
+  summarize(n = sum(grepl("amicus|amici", name, ignore.case = T))) %>% 
+  arrange(case) #%>% 
+  #box_write(., "amicus brief counts.xlsx", dir_id = "145990409196")
+```
+
+
+# 2. Scrape Text
+
+Obtain the raw text from each amicus brief. Note that we have two file types here: DOCX & PDF.
+
+Add file extension as col
+
+```{r}
+amicus_file_ids <- amicus_file_ids %>% 
+  mutate(file_type = tolower(sub(".*\\.", "", name))) 
+amicus_file_ids %>% group_by(file_type) %>% summarize(n = n())
+```
+
+
+```{r}
+# create iterator 
+itd <- iter(amicus_file_ids, by = "row")
+
+# set up cluster
+n_cores <- detectCores() - 1
+registerDoParallel(n_cores)
+
+# get text of cases in parallel
+amicus_txt <- foreach(i = itd, .inorder = F, .combine = rbind) %dopar% {
+  
+  # get id and file type of current file
+  id <- i %>% pull(id)
+  type <- i %>% pull(file_type)
+  
+  # grab case and brief names
+  case <- i %>% pull(case)
+  brief <- i %>% pull(name)
+  
+  if (type == "pdf") {
+    # is the file a PDF
+    
+    txt <- box_read(
+      file_id = id,
+      read_fun = function(x)
+        pdftools::pdf_text(x) %>%
+        readr::read_lines()
+    )
+    
+  } else if (type == "docx") {
+    # is the file a DOCX
+    
+    txt <- box_read(
+      file_id = id,
+      read_fun = function(x)
+        textreadr::read_docx(x)
+    )
+    
+  }  else {
+    txt <- box_read(
+      file_id = id,
+      read_fun = function(x)
+        textreadr::read_document(x)
+    )
+    
+  }
+
+  # grab text and concat to string
+  #txt <- box_read(
+  #  file_id = id,
+  #  read_fun = function(x)
+  #    textreadr::read_document(x)
+  #)
+  
+  # concatenate to string
+  txt_full <- paste(txt, sep = ' ', collapse = ' ')
+  
+  # add row
+  data.frame(case, brief, id, txt_full)
+}
+
+doParallel::stopImplicitCluster()
+```
+
+
+
+# 3. Write file to Box
+
+```{r}
+box_write(amicus_txt,
+          file_name = "raw-amicus-brief-text.csv",
+          dir_id = '145990409196')
+```
+
