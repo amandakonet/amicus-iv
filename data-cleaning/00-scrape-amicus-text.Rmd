@@ -106,6 +106,17 @@ amicus_file_ids %>%
   #box_write(., "amicus brief counts.xlsx", dir_id = "145990409196")
 ```
 
+Save list of amicus file IDs on Box
+
+```{r}
+amicus_file_ids %>% 
+  right_join(., case_folders, "case") %>% 
+  select(-id.y) %>% 
+  rename(id = id.x) %>% 
+  mutate(file_type = tolower(sub(".*\\.", "", name))) %>% 
+  box_write(., "amicus-file-ids.csv", dir_id = "145990409196")
+```
+
 
 # 2. Scrape Text
 

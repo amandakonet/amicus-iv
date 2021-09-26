@@ -1,0 +1,257 @@
+---
+title: "Amicus Structure"
+author: "Amanda Konet"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T, warning = F, message = F, error = F)
+
+# Box access
+library(boxr)
+box_auth()
+
+# data manip?
+library(tidyverse)
+```
+
+
+# Purpose
+
+To identify which of the amicus briefs follow the structure below:
+
+Summary of (the) argument
+
+Introductory statement
+
+Statement of (the) case
+
+Interest of (the) amici/amicus/amicus curiae (we’re hoping to exclude this section)
+
+Purpose of the motion
+
+Questions presented
+
+Argument (where this is the only word on the line)
+
+# One Example
+
+After some trial and error, below is how we should process the text and search for the phrases of interest. NOte that Box reads in files line by line, so we are able to search individual lines for each phrase. 
+
+```{r}
+id <- '861820915273'
+
+txt <- box_read(
+      file_id = id,
+      read_fun = function(x)
+        textreadr::read_pdf(x)
+    )
+
+#txt_full <- paste(txt, sep = ' ', collapse = ' ')
+
+#txt <- gsub('[[:punct:]]','', txt)
+txt <- gsub('\\*.', '', txt)
+txt <- str_replace_all(txt, "[^a-zA-z]", replacement = "")
+txt <- tolower(txt)
+
+"introductorystatement" %in% txt
+"summaryofargument" %in% txt
+"summaryoftheargument" %in% txt
+"argument" %in% txt
+"statementofcase" %in% txt
+"statementofthecase" %in% txt
+"statementsofinterestofamicuscuriae" %in% txt
+"interestofamici" %in% txt
+"interestoftheamici" %in% txt
+"interestofamicus" %in% txt
+"interestoftheamicus" %in% txt
+"interestofamicuscuriae" %in% txt
+"interestoftheamicuscuriae" %in% txt
+"purposeofthemotion" %in% txt
+"questionspresented" %in% txt
+```
+
+# Read in all files, process & search for phrases
+
+Read in amicus file ids csv
+
+```{r}
+amicus_ids <- box_read("864720529825")
+amicus_ids <- amicus_ids %>% filter(!is.na(id))
+amicus_ids %>% head(5)
+```
+
+
+Break up into smaller sections 
+
+Search for phrases:
+
+```{r}
+# create iterator 
+itd <- iter(amicus_ids, by = "row")
+
+# set up cluster
+n_cores <- detectCores() - 1
+registerDoParallel(n_cores)
+
+# get text of cases in parallel
+amicus_structure <- foreach(i = itd, .inorder = F, .combine = rbind) %dopar% {
+  
+  # get id and file type of current file
+  id <- i %>% pull(id)
+  type <- i %>% pull(file_type)
+  
+  # grab case and brief names
+  case <- i %>% pull(case)
+  brief <- i %>% pull(name)
+  
+  cat(case)
+  cat("\t brief started:", brief)
+  
+  if (type == "pdf") {
+    # is the file a PDF
+    
+    txt <- box_read(
+      file_id = id,
+      read_fun = function(x)
+        pdftools::pdf_text(x) %>%
+        readr::read_lines()
+    )
+    
+  } else if (type == "docx") {
+    # is the file a DOCX
+    
+    txt <- box_read(
+      file_id = id,
+      read_fun = function(x)
+        textreadr::read_docx(x)
+    )
+    
+  }  else {
+    txt <- box_read(
+      file_id = id,
+      read_fun = function(x)
+        textreadr::read_document(x)
+    )
+    
+  }
+  
+  cat("\t \t text read")
+  
+  # clean
+  txt <- gsub('\\*.', '', txt)
+  txt <- str_replace_all(txt, "[^a-zA-z]", replacement = "")
+  txt <- tolower(txt)
+
+  # search
+  intro <- "introductorystatement" %in% txt
+  summary <- ifelse("summaryofargument" %in% txt|"summaryoftheargument" %in% txt, T, F)
+  argument <- "argument" %in% txt
+  statement <- ifelse("statementofcase" %in% txt|"statementofthecase" %in% txt, T, F)
+  interest <- ifelse("statementsofinterestofamicuscuriae" %in% txt |
+                       "interestofamicuscuriae" %in% txt |
+                       "interestoftheamicuscuriae" %in% txt |
+                       "interestofamici" %in% txt |
+                       "interestoftheamici" %in% txt |
+                       "interestofamicus" %in% txt |
+                       "interestoftheamicus" %in% txt, T, F)
+  purpose <- "purposeofthemotion" %in% txt
+  question <- "questionspresented" %in% txt
+  
+  cat("\t \t phrases found")
+  cat("\t \t brief finished")
+  
+  # add row
+  data.frame(case, brief, id, intro, summary, argument, statement, interest, purpose, question)
+}
+
+doParallel::stopImplicitCluster()
+```
+
+
+Save to Box
+
+```{r}
+box_write(amicus_structure, "amicus structure.xlsx", dir_id = "145990409196")
+```
+
+
+# Check
+
+The main vars we are interested in are "interest" and "summary". Between these two headings is information about the interests of amicus brief authors that we want to remove.
+
+From the first pass, we see that 244 documents have both the interest and summary sections and 103 are missing both. 
+
+```{r}
+amicus_structure %>% 
+  select(case, brief, interest, summary) %>% 
+  group_by(interest, summary) %>% 
+  summarize(n = n())
+```
+
+Individually check some that are missing "interest". Are there some cases where the formatting/langauge is just different? It's bc they are pdfs and pdfs don't read in line-by-line :(
+
+```{r}
+amicus_structure %>% filter(!interest) %>% group_by(case) %>% summarize(n = n()) %>% arrange(-n)
+```
+
+# Backup - grepl in text to search for phrases
+
+We can search for all phrases except "argument" by itself
+
+```{r}
+amicus <- box_read("863216279471")
+```
+
+
+Search for phrases using grepl: 
+
+```{r}
+amicus <- amicus %>%
+  mutate(txt_full = tolower(txt_full),
+         txt_full = str_squish(txt_full)) %>% 
+  mutate(intro = grepl("introductory statement", txt_full),
+         summary = grepl("summary of argument|summary of the argument", txt_full),
+         interest = grepl("interest of amicus|interest of the amicus|interest of amici|interest of the amici", txt_full),
+         statement = grepl("statement of case|statement of the case", txt_full),
+         purpose = grepl("purpose of the motion", txt_full),
+         question = grepl("questions presented", txt_full))
+
+amicus_summary <- amicus %>% 
+  select(-txt_full)
+
+amicus_summary %>% head(5)
+```
+
+
+Add to Box
+
+```{r}
+box_write(amicus_summary, "amicus summary.xlsx", dir_id = "145990409196")
+```
+
+
+check results - most briefs have summary and interest 
+
+```{r}
+amicus_summary %>% select(intro:question) %>% summarize(across(.fns = ~ sum(., is.na(.), 0)))
+```
+Check co-occurrence - Most briefs have "summary" and "interest" sections (517). 
+
+```{r}
+amicus_summary %>% group_by(summary, statement) %>% summarize(n = n())
+```
+
+
+
+Which briefs don't have "summary" ? 
+
+```{r}
+amicus_summary %>% filter(!summary) %>% group_by(case) %>% summarize(n = n()) %>% arrange(-n)
+```
+
+```{r}
+amicus_summary %>% filter(case == "Harris v. McRae", !summary)
+```
+
