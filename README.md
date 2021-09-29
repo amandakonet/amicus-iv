@@ -7,15 +7,15 @@ Notes: All data to be saved on Box **only** (Amicus IV - data)
 
 ## Background
 
-There is rich existing literature on the importance of "amicus curiae" (friend of the court) briefs submitted to the U.S. Supreme Court and their influence over decision outcomes. These briefs are submitted by parties, organizations, citizens, etc. who are interested in the outcome of a particular case. The purpose of these briefs is to 1) demonstrate to the Court that the impact of the decision extends beyond the involved parties and 2) to persuade the Court to vote in their favor. Decades of research indicates that, generally, the filing of such briefs influences whether the court votes one way or another. However, there is only one existing paper that dives into the contents of the amici. In this project, we 1) investigate text analysis/nlp tasks to identify/measure amicus brief contents and 2) empirically test whether contents influence justice votes. 
+There is rich existing literature on the importance of "amicus curiae" (friend of the court) briefs submitted to the U.S. Supreme Court and their influence over decision outcomes. These briefs are submitted by parties, organizations, citizens, etc. who are interested in the outcome of a particular case. The purpose of these briefs is to 1) demonstrate to the Court that the impact of the decision extends beyond the involved parties and 2) to persuade the Court to vote in their favor. Decades of research indicates that, generally, the filing of such briefs influence the outcomes of decisions, regardless of "case issue." However, there is only one existing paper that dives into the contents of the briefs. In this project, we 1) investigate text analysis/nlp tasks to identify/measure amicus brief contents and 2) empirically test whether contents influence justice votes. 
 
 ## Goal
 
-To build a model predicting a justice's vote (yes/no) on each of the ~40 Supreme Court cases reguarding abortion from the 1970s to present. Note the clustering inherent in the data by case: we have 40 groups with 9 observations each (one per justice vote). Models will need handle inherent clustering and small data. 
+To build a model predicting a justice's vote (yes/no) on each of the ~40 Supreme Court cases reguarding abortion from the 1970s to present. Note the clustering inherent in the data by case: we have 40 groups with 9 observations each (one per justice vote). Models will need to handle inherent clustering and small data. 
 
 ## Available Data
 
-The main data source is the text of 741 amicus briefs across all ~40 S.C. cases regarding abortion in the United States. This is a unique dataset collected by Dr. McCammon and previous graduate students in the Sociology department. In the model, we want to include 1) metadata on the case, justices, society, etc. and 2) measures describing contents of the amicus briefs.
+The main data source is the text of 741 amicus briefs across all ~40 S.C. cases regarding abortion in the United States. This is a unique dataset collected by Dr. McCammon and previous graduate students in Vanderbilt's Sociology department. In the model, we want to include 1) metadata on the case, justices, society, etc. and 2) measures describing contents of the amicus briefs.
 
 We have dozens of potential variables categorized by the "level" they belong to:
 
