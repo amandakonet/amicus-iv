@@ -60,7 +60,7 @@ The type of data we have (clustered) belongs to a class of data where observatio
 1. Random effects (or multi-level or mixed effects) models (linear regression w/constraints for different levels)
 2. Bayesian models (hierarchical nature of these models suits clustered data)
 3. Existing machine learning algorithms adapted with constraints 
-    - GPBoost: tree boosting & mixed effects ([blog post which also links to research article](https://towardsdatascience.com/tree-boosted-mixed-effects-models-4df610b624cb) and [python implementation](https://github.com/fabsig/GPBoost)
-    - MERF: Mixed Effects Random Forests ([blog post, links to research article](https://towardsdatascience.com/mixed-effects-random-forests-6ecbb85cb177) and [python implementation](https://pypi.org/project/merf/)
+    - GPBoost: tree boosting & mixed effects ([blog post which also links to research article](https://towardsdatascience.com/tree-boosted-mixed-effects-models-4df610b624cb) and [python implementation](https://github.com/fabsig/GPBoost))
+    - MERF: Mixed Effects Random Forests ([blog post, links to research article](https://towardsdatascience.com/mixed-effects-random-forests-6ecbb85cb177) and [python implementation](https://pypi.org/project/merf/))
     - these have similar performance but GPBoost is much faster
 
