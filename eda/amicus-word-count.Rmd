@@ -1,0 +1,64 @@
+---
+title: "Amicus Word Count"
+author: "Amanda Konet"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T, warning = F, message = F, error = F)
+
+# Box access
+library(boxr)
+box_auth()
+
+# data manip
+library(tidyverse)
+library(tidytext)
+```
+
+# Purpose
+
+Get word count of amicus briefs -- min, max, med, avg. May need to use long transformers instead of regular since we have some pretty long docs?
+
+consult w/ JSS
+
+```{r}
+# raw amicus text
+amicus <- box_read("863216279471")
+
+amicus %>% head(5)
+```
+
+# Tokenize
+
+Tokenize text as is then get # words per brief
+
+```{r}
+# returns case, brief, word for all words in all cases
+amicus_tokens <- amicus %>% 
+  select(case, brief, text = txt_full) %>%
+  group_by(brief) %>% 
+  unnest_tokens(word, text)
+
+# word ct per brief
+amicus_wrdct <- amicus_tokens %>% group_by(brief) %>% summarize(n=n())
+```
+
+
+# Explore word count
+
+Summary - way higher than BERT. 
+
+```{r}
+summary(amicus_wrdct$n)
+```
+
+
+LongFormers can use up to 16k tokens... any texts that are longer than this? Yes. We have 45 amicus briefs with 16k+ tokens. Possible we may be able to pare these down but it will have to be manual and we need to make sure we aren't losing information. 
+
+
+```{r}
+amicus_wrdct %>% filter(n >= 16000) %>% arrange(-n)
+```
+

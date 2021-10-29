@@ -1,0 +1,48 @@
+---
+title: "Amicus Word Count"
+author: "Amanda Konet"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T, warning = F, message = F, error = F)
+
+# Box access
+library(boxr)
+box_auth()
+
+# data manip
+library(tidyverse)
+library(tidytext)
+```
+
+# Purpose
+
+To pare down amicus text by removing unnecessary/irrelevant text.
+
+1) Remove text AFTER "Summary of Argument" keyword.
+
+2) Remove text AFTER "Appendix" keyword
+
+* "footnotes" ?? 
+
+Use footnotes when present. If not footnotes, use appendix. If neither: check. There are 154 docs with neither
+
+
+```{r}
+amicus <- amicus %>%
+  mutate(txt_full = tolower(txt_full),
+         txt_full = str_squish(txt_full)) %>% 
+  mutate(appendix = str_count(txt_full, "appendix"),
+         footnotes = str_count(txt_full, "footnote"))
+
+amicus %>% select(case, brief, appendix, footnotes) %>% 
+  group_by(appendix > 0, footnotes >0) %>% 
+  summarize(n())
+```
+
+```{r}
+amicus %>% filter()
+```
+
