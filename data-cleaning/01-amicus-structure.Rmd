@@ -252,6 +252,26 @@ amicus_summary %>% filter(!summary) %>% group_by(case) %>% summarize(n = n()) %>
 ```
 
 ```{r}
-amicus_summary %>% filter(case == "Harris v. McRae", !summary)
+amicus_summary %>% filter(!summary) %>% group_by(intro, statement) %>% summarize(n=n())
 ```
+
+
+
+
+```{r}
+amicus_summary %>% filter(grepl("docx", brief), !summary)
+```
+
+```{r}
+sum_id <- readxl::read_excel(path = "../reference_files/docx_summary_ids.xlsx")
+sum_id %>% head(5)
+```
+
+
+```{r}
+amicus %>% filter(id == 861820896073) %>% 
+  mutate(t = grepl("protecting a woman’s health. argument", txt_full)) %>% 
+  select(t)
+```
+
 
