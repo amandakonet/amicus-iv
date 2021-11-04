@@ -50,6 +50,7 @@ For all of the folders, retrieve every file name and ID.
 ```{r}
 # number of cores available
 n_cores <- detectCores() - 1
+registerDoParallel(n_cores)
 
 # given a df of ids for SC folder, extract names and ids of all files in case folder
 # then, save only the name and id of the decision file
@@ -94,7 +95,7 @@ doParallel::stopImplicitCluster()
 ```
 
 
-Check what we have - count of amicus briefs by case for manual comparision
+Check what we have - count of amicus briefs by case for manual comparison
 
 ```{r}
 # save this file to data > processed amicus files
@@ -201,7 +202,7 @@ doParallel::stopImplicitCluster()
 
 ```{r}
 box_write(amicus_txt,
-          file_name = "raw-amicus-brief-text.csv",
+          file_name = "shortened-amicus-brief-text.csv",
           dir_id = '145990409196')
 ```
 
