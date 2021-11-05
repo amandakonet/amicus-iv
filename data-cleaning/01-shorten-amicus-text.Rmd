@@ -15,6 +15,14 @@ box_auth()
 # data manip
 library(tidyverse)
 library(tidytext)
+
+# data
+# data/processed amicus files/shortened-amicus-brief-text.csv
+amicus <- box_read("880862059511")
+# data/processed amicus files/amicus summary.xlsx
+alternate_rmv <- box_read("864995408351", sheet = "data") %>% 
+  select(case, brief, id, alternative) %>% 
+  filter(!is.na(alternative))
 ```
 
 # Purpose
@@ -25,24 +33,75 @@ To pare down amicus text by removing unnecessary/irrelevant text.
 
 2) Remove text AFTER "Appendix" keyword
 
-* "footnotes" ?? 
+# Remove after "Summary of Argument"
+
+For most documents, there exists the header "summary of argument." If it did not exist, it was manually entered into the document. This represents the point at which the brief starts discussing their argument. We don't need text prior to this, as it's mainly intro information about the case and/or the authors. If "summary of argument" text doesn't exist (only in the case of a few pdfs), use the `alternative_rmv` df to find where to start reading the text.
+
+alternate removal strings
+
+```{r}
+alternate_rmv %>% select(id,alternative)
+```
+Shorten
+
+```{r}
+# remove text after "summary of argument" if it exists
+amicus <- amicus %>% 
+  mutate(txt_full = str_to_lower(txt_full),
+         txt_full = str_squish(txt_full),
+         txt_short = case_when(
+           grepl("summary of argument", txt_full) ~ 
+             gsub(pattern = ".*summary of argument", replacement = "", x = txt_full),
+           grepl("summary of the argument", txt_full) ~
+             gsub(pattern = ".*summary of the argument", replacement = "", x = txt_full),
+           id == 861820908073 ~ gsub(pattern = ".*introduction and summary", replacement = "", x = txt_full),
+           id == 861820896073 ~ gsub(pattern = ".*introduction", replacement = "", x = txt_full),
+           id == 861822667487 ~ gsub(pattern = ".*introduction", replacement = "", x = txt_full),
+           T ~ ""),
+         txt_short = str_squish(txt_short))
+```
+
+Check none are missed 
+
+```{r}
+amicus %>% filter(txt_short == "") %>% select(-txt_full)
+```
+
+Check a few by running this line a few times.
+
+```{r}
+#amicus %>% sample_n(1) %>% pull(txt_short)
+```
+
+
+# Remove text after "Appendix" or "Footnotes"
+
+
 
 Use footnotes when present. If not footnotes, use appendix. If neither: check. There are 154 docs with neither
 
 
 ```{r}
 amicus <- amicus %>%
-  mutate(txt_full = tolower(txt_full),
-         txt_full = str_squish(txt_full)) %>% 
   mutate(appendix = str_count(txt_full, "appendix"),
          footnotes = str_count(txt_full, "footnote"))
 
-amicus %>% select(case, brief, appendix, footnotes) %>% 
-  group_by(appendix > 0, footnotes >0) %>% 
-  summarize(n())
+amicus %>% select(case, brief, id, appendix, footnotes) %>% 
+  filter(appendix==0 & footnotes==0)
 ```
+
+
+# Save
+
+Original text saved, just added new txt_short col 
 
 ```{r}
-amicus %>% filter()
+amicus %>% colnames
 ```
 
+
+```{r}
+box_write(amicus,
+          file_name = "shortened-amicus-brief-text.csv",
+          dir_id = '145990409196')
+```
