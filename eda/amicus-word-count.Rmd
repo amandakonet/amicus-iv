@@ -24,8 +24,8 @@ Get word count of amicus briefs -- min, max, med, avg. May need to use long tran
 consult w/ JSS
 
 ```{r}
-# raw amicus text
-amicus <- box_read("863216279471")
+# shortened amicus text
+amicus <- box_read("880862059511")
 
 amicus %>% head(5)
 ```
@@ -37,7 +37,7 @@ Tokenize text as is then get # words per brief
 ```{r}
 # returns case, brief, word for all words in all cases
 amicus_tokens <- amicus %>% 
-  select(case, brief, text = txt_full) %>%
+  select(case, brief, text = txt_short) %>%
   group_by(brief) %>% 
   unnest_tokens(word, text)
 
@@ -52,6 +52,35 @@ Summary - way higher than BERT.
 
 ```{r}
 summary(amicus_wrdct$n)
+```
+
+
+Number of docs w/ > 512 tokens (regular transformers), > 4,096 tokens (longformer), > 16k tokens (longformer w/adjustments & computing power)
+
+```{r}
+amicus_wrdct <- amicus_wrdct %>% 
+  mutate(greater_512 = n > 512,
+         num_blocks_512 = ceiling(n/512),
+         greater_4096 = n > 4096,
+         num_blocks_4096 = ceiling(n/4096),
+         greater_16k = n > 16000,
+         num_blocks_16k = ceiling(n/16000))
+
+# num docs at each length
+amicus_wrdct %>% 
+  summarize(greater_512 = sum(greater_512*1),
+            greater_4096 = sum(greater_4096*1),
+            greater_16k = sum(greater_16k*1))
+```
+
+How many processing blocks would we need for each model?
+
+```{r}
+amicus_wrdct %>% 
+  filter(brief != "Ayotte v Planned Parenthood of Northern New England. Amici Brief for Petitioner%2c by Loren Leman et al.docx") %>% 
+  summarize(med_blocks_512 = median(num_blocks_512),
+            med_blocks_4096 = median(num_blocks_4096),
+            med_blocks_16k = median(num_blocks_16k))
 ```
 
 
