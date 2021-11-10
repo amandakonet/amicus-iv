@@ -82,12 +82,16 @@ Use footnotes when present. If not footnotes, use appendix. If neither: check. T
 
 
 ```{r}
-amicus <- amicus %>%
-  mutate(appendix = str_count(txt_full, "appendix"),
-         footnotes = str_count(txt_full, "footnote"))
+amicus_ends <- amicus %>%
+  mutate(appendix = str_count(txt_short, "appendix"),
+         appendices = str_count(txt_short, "appendices"),
+         footnotes = str_count(txt_short, "footnotes"))
 
-amicus %>% select(case, brief, id, appendix, footnotes) %>% 
-  filter(appendix==0 & footnotes==0)
+amicus_ends <- amicus_ends %>% select(case, brief, id, appendix, footnotes)
+  
+#box_write(amicus_ends,
+#          file_name = "amicus appendix and footnotes counts.csv",
+#          dir_id = 145990409196)
 ```
 
 
@@ -96,6 +100,7 @@ amicus %>% select(case, brief, id, appendix, footnotes) %>%
 Original text saved, just added new txt_short col 
 
 ```{r}
+amicus <- amicus %>% select(-txt_full)
 amicus %>% colnames
 ```
 
@@ -103,5 +108,5 @@ amicus %>% colnames
 ```{r}
 box_write(amicus,
           file_name = "shortened-amicus-brief-text.csv",
-          dir_id = '145990409196')
+          dir_id = 145990409196)
 ```
