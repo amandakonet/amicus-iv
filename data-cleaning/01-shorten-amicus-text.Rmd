@@ -15,6 +15,7 @@ box_auth()
 # data manip
 library(tidyverse)
 library(tidytext)
+library(conText)
 
 # data
 # data/processed amicus files/shortened-amicus-brief-text.csv
@@ -74,8 +75,7 @@ Check a few by running this line a few times.
 ```
 
 
-# Remove text after "Appendix" or "Footnotes"
-
+# Check isntances of "Appendix" or "Footnotes"
 
 
 Use footnotes when present. If not footnotes, use appendix. If neither: check. There are 154 docs with neither
@@ -93,6 +93,87 @@ amicus_ends <- amicus_ends %>% select(case, brief, id, appendix, footnotes)
 #          file_name = "amicus appendix and footnotes counts.csv",
 #          dir_id = 145990409196)
 ```
+
+
+# Remove footnotes instances
+
+Process:
+
+0. Check if "footnotes" is within three words of "omitted" -> in this case, do not remove any text.
+1. Ignore instances of "footnotes" in our exceptions:
+    * 861810659757"
+    * 861821999947 (ignore first instance, second instance is footnotes)
+    * 861823138310
+    * 861811382099
+    * 861820447683
+2. If "footnotes" is referenced one time, remove all text after this reference
+3. If "footnotes" is mentioned more than once, remove text after the first reference
+
+
+First, get context around "footnotes" 
+
+```{r}
+# context function changes brief names to "textN" 
+# create this var here so we can map files back
+brief_names <- amicus %>% 
+  arrange(case,brief) %>% 
+  mutate(docname = paste0("text", 1:n())) %>%
+  select(brief, id, docname)
+
+# remove punctuation
+amicus <- amicus %>% 
+  arrange(case, brief) %>% 
+  mutate(txt_short_clean = gsub("[^[:alpha:][:space:][:digit:]]", " ", txt_short),
+                            txt_short_clean = str_squish(txt_short_clean))
+
+# get context around "footnotes"
+footnotes_context <- get_context(x = amicus$txt_short_clean, target = "footnotes", 
+                                 window = 5, valuetype = "fixed",
+                                 case_insensitive = T, hard_cut = F, verbose = F)
+```
+
+
+Cases where "footnotes" actually references footnotes section, by intuition and some manual inspection:
+* footnotes 1
+* footnotes counsel of record
+
+```{r}
+footnotes_confirmed <- brief_names %>%
+  left_join(., footnotes_context, by = "docname") %>%
+  select(-target) %>%
+  mutate(footnotes_true = ifelse(grepl(" 1 ", context) |
+                                   grepl("counsel of record", context),
+                                 1, 0)) %>%
+  filter(footnotes_true == 1)
+
+footnotes_confirmed %>% distinct(id) %>% nrow()
+```
+
+No footnotes:
+
+```{r}
+amicus %>% filter(!grepl("footnotes", txt_short)) %>% nrow()
+```
+
+Remaining cases: note that this df can have multiple instances of the same case if more than one instance of "footnotes" found.
+
+
+```{r}
+footnotes_tbd <- brief_names %>%
+  left_join(., footnotes_context, by = "docname") %>%
+  # remove instances of confirmed footnotes (n = 398)
+  filter(!(id %in% footnotes_confirmed$id)) %>% 
+  # remove instances where "footnotes" not found (n = 270)
+  filter(!is.na(context))
+```
+
+
+Save this file for checking:
+
+```{r}
+#box_write(footnotes_tbd, file_name = "briefs to check footnotes.xlsx", dir_id = 145990409196)
+```
+
 
 
 # Save
