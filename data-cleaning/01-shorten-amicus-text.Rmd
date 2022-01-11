@@ -43,7 +43,8 @@ alternate removal strings
 ```{r}
 alternate_rmv %>% select(id,alternative)
 ```
-Shorten
+
+Remove text before summary of argument (already done)
 
 ```{r}
 # remove text after "summary of argument" if it exists
@@ -75,7 +76,7 @@ Check a few by running this line a few times.
 ```
 
 
-# Check isntances of "Appendix" or "Footnotes"
+# Check instances of "Appendix" or "Footnotes"
 
 
 Use footnotes when present. If not footnotes, use appendix. If neither: check. There are 154 docs with neither
@@ -94,21 +95,54 @@ amicus_ends <- amicus_ends %>% select(case, brief, id, appendix, footnotes)
 #          dir_id = 145990409196)
 ```
 
+# Remove appendices instances
+
+From undergrad assistant: "I have found that often, the appendix will start with an asterisk (usually *1A Appendix). The Appendix also almost always immediately precedes the footnotes."
+
+We need to:
+
+1. find instances of "*1A Appendix" in the text 
+2. Check that this only occurs 1x in a doc. 
+3a. If 2) is true, then remove text after these instances.
+3b. If 3) is false, further inspect the text (may require manual removal)
+4. If it does not occur at all, check for the marker for footnotes (see next section). 
+5a. If footnote marker exists, remove all text after
+5b. If footnote marker does not exist, then manually inspect text. If there are footnotes/appendix, insert flag into text: "MNOPQRST" (w/o quotes) and remove all text after that flag. 
+
+
+```{r}
+brief_names <- amicus %>% 
+  arrange(case,brief) %>% 
+  mutate(docname = paste0("text", 1:n())) %>%
+  select(brief, id, docname)
+
+# remove punctuation
+amicus <- amicus %>% 
+  arrange(case, brief) %>% 
+  mutate(txt_short_clean = gsub("[^[:alpha:][:space:][:digit:]]", " ", txt_short),
+                            txt_short_clean = str_squish(txt_short_clean))
+
+# get context around "footnotes"
+appendix_context <- get_context(x = amicus$txt_short, target = "appendix", 
+                                 window = 5, valuetype = "fixed",
+                                 case_insensitive = T, hard_cut = F, verbose = F)
+
+appendix_context <- brief_names %>%
+  left_join(., appendix_context, by = "docname")
+```
+
+Look for *1a
+
+```{r}
+appendix_context %>% filter(grepl("* 1a", context))
+```
+
+```{r}
+amicus %>% filter(grepl("\\* 1a appendix|*", txt_short)) #%>% select(brief)
+```
+
 
 # Remove footnotes instances
-
-Process:
-
-0. Check if "footnotes" is within three words of "omitted" -> in this case, do not remove any text.
-1. Ignore instances of "footnotes" in our exceptions:
-    * 861810659757"
-    * 861821999947 (ignore first instance, second instance is footnotes)
-    * 861823138310
-    * 861811382099
-    * 861820447683
-2. If "footnotes" is referenced one time, remove all text after this reference
-3. If "footnotes" is mentioned more than once, remove text after the first reference
-
 
 First, get context around "footnotes" 
 
@@ -187,7 +221,7 @@ amicus %>% colnames
 
 
 ```{r}
-box_write(amicus,
-          file_name = "shortened-amicus-brief-text.csv",
-          dir_id = 145990409196)
+#box_write(amicus,
+#          file_name = "shortened-amicus-brief-text.csv",
+#          dir_id = 145990409196)
 ```
