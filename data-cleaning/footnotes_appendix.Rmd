@@ -36,20 +36,22 @@ To pare down amicus text by removing unnecessary/irrelevant text.
 
 # Remove after "Summary of Argument"
 
+**Already done to the shortened-amicus csv file, skip this**
+
 For most documents, there exists the header "summary of argument." If it did not exist, it was manually entered into the document. This represents the point at which the brief starts discussing their argument. We don't need text prior to this, as it's mainly intro information about the case and/or the authors. If "summary of argument" text doesn't exist (only in the case of a few pdfs), use the `alternative_rmv` df to find where to start reading the text.
 
 alternate removal strings
 
 ```{r}
-alternate_rmv %>% select(id,alternative)
+#alternate_rmv %>% select(id,alternative)
 ```
 
-Remove text before summary of argument (already done)
+Remove text before summary of argument (already done in shortened-amicus-text csv, not raw text csv.)
 
 ```{r}
 # remove text after "summary of argument" if it exists
 amicus <- amicus %>% 
-  mutate(txt_full = str_to_lower(txt_full),
+  mutate(txt_full = str_to_lower(txt_short),
          txt_full = str_squish(txt_full),
          txt_short = case_when(
            grepl("summary of argument", txt_full) ~ 
@@ -105,7 +107,7 @@ We need to:
 a <- amicus %>%
   mutate(txt_short = str_squish(txt_short),
     appendix = str_count(txt_short, "appendix"),
-    appendix_1a = str_count(txt_short, "\\*1a appendix"),
+    appendix_1a = str_count(txt_short, "\\*1a appendix|1a appendix|1 a appendix|\\*1a"),
     footnotes = str_count(txt_short, "footnotes"))
 ```
 
@@ -120,6 +122,16 @@ table(a$appendix_1a)
 ```
 
 There are only 55 documents that mention 1a appendix, but 295 that mention an appendix.This means if we remove text after `1a appendix` this covers 55 documents leaving 240 documents mentioning `appendix` left to deal with.
+
+```{r}
+a %>% filter(brief== "Gonzales v Carhart. Amici Brief for Respondents (feminist), by Constitutional Law Professors et al.docx")
+```
+
+
+```{r}
+a %>% filter(appendix_1a==0) %>% select(brief) %>% sample_n(1)
+```
+
 
 ## 3a. If 2) is true, then remove text after these instances.s
 
@@ -172,6 +184,8 @@ I could not get your `get_context` code to work but I know from my previous rese
 2. Use first finding of the word `footnotes` and remove text after that
 
 We can also use some of your logic instead. The code below is pretty much what we need, but need to combined with logic above to only perform this on documents that didn't have appendix.
+
+**We don't need to worry about the 'omitted footnote' language in the text. Remove text after 'footnotes counsel of record' or 'footnotes 1' (see github issue)**
 
 ```{r}
 #remove text with omitted within 3 words of footnotes
