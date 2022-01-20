@@ -183,6 +183,15 @@ footnotes_confirmed <- brief_names %>%
 footnotes_confirmed %>% distinct(id) %>% nrow()
 ```
 
+Add to box:
+
+```{r}
+footnotes_confirmed_id <- footnotes_confirmed %>% distinct(id)
+box_write(footnotes_confirmed_id,
+          file_name = "footnotes-confirmed.csv",
+          dir_id = 145990409196)
+```
+
 No footnotes:
 
 ```{r}
