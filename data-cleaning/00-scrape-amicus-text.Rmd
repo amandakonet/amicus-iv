@@ -196,13 +196,38 @@ amicus_txt <- foreach(i = itd, .inorder = F, .combine = rbind) %dopar% {
 doParallel::stopImplicitCluster()
 ```
 
+Check that our files contain "summary of (the) argument: this is the phrase that indicates the start of the text we want to analyze.
+
+```{r}
+amicus_txt %>% 
+  mutate(txt_full = str_squish(txt_full),
+         summary = grepl("summary of argument|summary of the argument", txt_full, ignore.case = T)) %>%
+  group_by(summary) %>% 
+  summarize(n=n())
+```
+
+Which files do not? -- should just be the 3 that we have manual adjustments recorded for.
+
+```{r}
+amicus_txt %>% 
+  mutate(txt_full = str_squish(txt_full),
+         summary = grepl("summary of argument|summary of the argument", txt_full, ignore.case = T)) %>%
+  filter(!summary) %>% 
+  select(brief)
+```
+
+Final column names
+
+```{r}
+amicus_txt %>% colnames()
+```
 
 
 # 3. Write file to Box
 
 ```{r}
 box_write(amicus_txt,
-          file_name = "shortened-amicus-brief-text.csv",
+          file_name = "raw-amicus-brief-text.csv",
           dir_id = '145990409196')
 ```
 
