@@ -1,5 +1,5 @@
 ---
-title: "Removing footnotes and appendix"
+title: "Removing footnotes and appendices"
 author: "Sarah Torrence"
 date: "`r Sys.Date()`"
 output: pdf_document
@@ -15,15 +15,16 @@ box_auth()
 # data manip
 library(tidyverse)
 library(tidytext)
-#library(conText)
 
 # data
-# data/processed amicus files/shortened-amicus-brief-text.csv
-amicus <- box_read("880862059511")
+# data/processed amicus files/raw-amicus-brief-text.csv
+amicus <- box_read("863216279471")
 # data/processed amicus files/amicus summary.xlsx
 alternate_rmv <- box_read("864995408351", sheet = "data") %>% 
   select(case, brief, id, alternative) %>% 
   filter(!is.na(alternative))
+#data/processed amicus files/footnotes-confirmed.csv
+footnotes_ids <- box_read("908607927934")
 ```
 
 # Purpose
@@ -34,9 +35,7 @@ To pare down amicus text by removing unnecessary/irrelevant text.
 
 2) Remove text AFTER "Appendix" keyword
 
-# Remove after "Summary of Argument"
-
-**Already done to the shortened-amicus csv file, skip this**
+# Remove before "Summary of Argument"
 
 For most documents, there exists the header "summary of argument." If it did not exist, it was manually entered into the document. This represents the point at which the brief starts discussing their argument. We don't need text prior to this, as it's mainly intro information about the case and/or the authors. If "summary of argument" text doesn't exist (only in the case of a few pdfs), use the `alternative_rmv` df to find where to start reading the text.
 
@@ -50,23 +49,31 @@ Remove text before summary of argument (already done in shortened-amicus-text cs
 
 ```{r}
 # remove text after "summary of argument" if it exists
-amicus <- amicus %>% 
-  mutate(txt_full = str_to_lower(txt_short),
-         txt_full = str_squish(txt_full),
+amicus <- amicus %>%
+  mutate(txt_full = str_squish(txt_full),
          txt_short = case_when(
-           grepl("summary of argument", txt_full) ~ 
-             gsub(pattern = ".*summary of argument", replacement = "", x = txt_full),
-           grepl("summary of the argument", txt_full) ~
-             gsub(pattern = ".*summary of the argument", replacement = "", x = txt_full),
-           id == 861820908073 ~ gsub(pattern = ".*introduction and summary", replacement = "", 
-                                     x = txt_full),
-           id == 861820896073 ~ gsub(pattern = ".*introduction", replacement = "", x = txt_full),
-           id == 861822667487 ~ gsub(pattern = ".*introduction", replacement = "", x = txt_full),
-           T ~ ""),
+           id == 861820795454 ~ gsub(pattern = ".*summary \\[\\*9\\] of the argument", replacement = "",
+                                     x = txt_full, ignore.case = TRUE),
+           grepl("summary of argument|Summary of Argument|SUMMARY OF ARGUMENT", txt_full,
+                 ignore.case = TRUE) ~
+             gsub(pattern = ".*summary of argument|.*Summary of Argument|.*SUMMARY OF ARGUMENT",
+                  replacement = "",
+                  x = txt_full, ignore.case = TRUE),
+           grepl("summary of the argument", txt_full, ignore.case = TRUE) ~
+             gsub(pattern = ".*summary of the argument", replacement = "",
+                  x = txt_full, ignore.case = TRUE),
+           id == 861820908073 ~ gsub(pattern = ".*introduction and summary", replacement = "",
+                                     x = txt_full, ignore.case = TRUE),
+           id == 861820896073 ~ gsub(pattern = ".*introduction", replacement = "",
+                                     x = txt_full, ignore.case = TRUE),
+           id == 861822667487 ~ gsub(pattern = ".*introduction", replacement = "",
+                                     x = txt_full, ignore.case = TRUE),
+           #this line can be changed to T ~ '' once the raw brief file is updated
+           T ~ txt_full),
          txt_short = str_squish(txt_short))
 ```
 
-Check none are missed 
+Check none are missed
 
 ```{r}
 amicus %>% filter(txt_short == "") %>% select(-txt_full)
@@ -78,176 +85,219 @@ Check a few by running this line a few times.
 #amicus %>% sample_n(1) %>% pull(txt_short)
 ```
 
+# Removing Appendices
 
-# Check instances of "Appendix" or "Footnotes"
+## Remove *1A Appendix
+
+Whenever `*1A Appendix` shows up in the text, this is referring to the start of the appendix. We want to remove all text after this phrase from the briefs that contain this phrase.
+
+### find instances of "*1A Appendix" in the text
+
+```{r}
+amicus <- amicus %>%
+  mutate(txt_short = str_squish(txt_short),
+    appendix_1a = str_count(txt_short, "\\*1a Appendix|\\*1A APPENDIX|\\*1A Appendix|\\*IA APPENDIX"))
+```
+
+Check that this only occurs 1x in a doc. 
+
+```{r}
+table(amicus$appendix_1a)
+```
 
 
-Use footnotes when present. If not footnotes, use appendix. If neither: check. There are 154 docs with neither
+Since this phrase only occurs once in the briefs in which it is present, we can just remove all text after this text for those 56 briefs.
 
+```{r}
+amicus <- amicus %>% mutate(
+         txt_short = str_squish(txt_short),
+         txt_short = case_when(
+           grepl("\\*1a appendix|\\*ia appendix", txt_short, ignore.case = TRUE) ~ 
+             gsub(pattern = "\\*1a appendix.*|\\*ia appendix.*", replacement = "", x = txt_short,
+                  ignore.case = TRUE),
+           T ~ txt_short),
+         txt_short = str_squish(txt_short))
+```
 
-
-
-# Remove appendices instances
-
-From undergrad assistant: "I have found that often, the appendix will start with an asterisk (usually *1A Appendix). The Appendix also almost always immediately precedes the footnotes."
-
-We need to:
-
-1. find instances of "*1A Appendix" in the text 
-2. Check that this only occurs 1x in a doc. 
-3a. If 2) is true, then remove text after these instances.
-3b. If 2) is false, further inspect the text (may require manual removal)
-4. If it does not occur at all, check for the marker for footnotes (see next section). 
-5a. If footnote marker exists, remove all text after
-5b. If footnote marker does not exist, then manually inspect text. If there are footnotes/appendix, insert flag into text: "MNOPQRST" (w/o quotes) and remove all text after that flag. 
-
-## 1. find instances of "*1A Appendix" in the text
+Checking to make sure `*1A Appendix` references have been removed.
 
 ```{r}
 a <- amicus %>%
-  mutate(txt_short = str_squish(txt_short),
-    appendix = str_count(txt_short, "appendix"),
-    appendix_1a = str_count(txt_short, "\\*1a appendix|1a appendix|1 a appendix|\\*1a"),
-    footnotes = str_count(txt_short, "footnotes"))
-```
+  mutate(appendix_1a = str_count(txt_short, "\\*1a Appendix|\\*1A APPENDIX|\\*1A Appendix"))
 
-## 2. Check that this only occurs 1x in a doc. 
-
-```{r}
-table(a$appendix)
-```
-
-```{r}
 table(a$appendix_1a)
 ```
 
-There are only 55 documents that mention 1a appendix, but 295 that mention an appendix.This means if we remove text after `1a appendix` this covers 55 documents leaving 240 documents mentioning `appendix` left to deal with.
+## Handling APPENDIX A cases
+
+From some manual inspection, it looks like when `APPENDIX A` is mentioned in all caps that is it referring to the first section of the appendix.
+
+Let's see how many documents have `APPENDIX A` in them.
 
 ```{r}
-a %>% filter(brief== "Gonzales v Carhart. Amici Brief for Respondents (feminist), by Constitutional Law Professors et al.docx")
+amicus <- amicus %>% filter(appendix_1a == 0) %>%
+  mutate(appendix_a = str_count(txt_short, "APPENDIX A"))
+
+table(amicus$appendix_a)
 ```
 
+`APPENDIX A` occurs in 56 briefs that did not already have the appendix removed. 
+
+We want to manually look at some of the briefs that mention `APPENDIX A` to make sure it really is at the beginning of the appendix.
 
 ```{r}
-a %>% filter(appendix_1a==0) %>% select(brief) %>% sample_n(1)
+amicus %>% filter(appendix_a > 0) %>% select(id, appendix_a)
 ```
 
-
-## 3a. If 2) is true, then remove text after these instances.s
-
-This is preliminary code to remove text after `*1a appendix`.
+After checking 10 briefs that mention `APPENDIX A` once and the 1 brief that mentions it twice, all first instances refer to the beginning of the appendix. Therefore, we can remove all text after `APPENDIX A`.
 
 ```{r}
-amicus_clean <- amicus %>% mutate(
-         txt_short = str_squish(txt_short),
+amicus <- amicus %>% mutate(
          txt_short = case_when(
-           grepl("\\*1a appendix", txt_short) ~ 
-             gsub(pattern = "\\*1a appendix.*", replacement = "", x = txt_short),
+           appendix_1a == 0 &
+           grepl("APPENDIX A", txt_short) ~ 
+             gsub(pattern = "APPENDIX A.*", replacement = "", x = txt_short),
            T ~ txt_short),
          txt_short = str_squish(txt_short))
 ```
 
+Checking to make sure `APPENDIX A` references have been removed.
+
 ```{r}
-amicus_clean %>% filter(txt_short == "")
+a <- amicus %>% filter(appendix_1a == 0) %>%
+  mutate(appendix_a = str_count(txt_short, "APPENDIX A"))
+
+table(a$appendix_a)
 ```
 
-## 3b. If 2) is false, further inspect the text (may require manual removal)
-
-There were no documents that mentioned *1a appendix more than once so we can be confident that they were referring to the actual appendix. However, now there are 267 documents that contain `appendix` to deal with. Some of these include the documents above that already had the appendix remove so the real number of documents we need to remove is less if we just handle dealing with them in the same code chunk like lines 128-136.
-
+## Handling other forms of appendix
 
 ```{r}
-a_clean <- amicus_clean %>%
-  mutate(txt_short = str_squish(txt_short),
-    appendix = str_count(txt_short, "appendix"))
+amicus <- amicus %>% filter(appendix_1a == 0 & appendix_a == 0) %>% 
+  mutate(appendix = str_count(txt_short, "APPENDIX"))
 
-table(a_clean$appendix)
+table(amicus$appendix)
 ```
 
-## 4. If it does not occur at all, check for the marker for footnotes (see next section). 
-
-When all text after the appendix is removed, this will include any footnotes as the appendix precedes the footnotes. We now only need to remove the footnotes from additional documents that did not have an appendix.
+There are still 86 briefs that mention `APPENDIX`. We want to manually look at some of the briefs that mention `APPENDIX` to see if they refer to the beginning of the appendix
 
 ```{r}
-a_f <- a %>% filter(appendix_1a == 0 & appendix == 0)
-
-table(a_f$footnotes)
+amicus %>% filter(appendix > 1) %>% select(id, appendix)
 ```
 
-There are 263 documents containing `footnotes` that don't mention `appendix`. 
-
-I could not get your `get_context` code to work but I know from my previous research and some manual inspection that the following logic should work for removing footnotes. The footnotes are not referenced for the the footnotes section except to mention that something was omitted from the footnotes therefore removing or ignoring those instances, we can remove text after the first instance of the word `footnotes`.
-
-1. ignore/remove these instances:
-    * `footnotes omitted` or
-    * 3 words from omitted
-2. Use first finding of the word `footnotes` and remove text after that
-
-We can also use some of your logic instead. The code below is pretty much what we need, but need to combined with logic above to only perform this on documents that didn't have appendix.
-
-**We don't need to worry about the 'omitted footnote' language in the text. Remove text after 'footnotes counsel of record' or 'footnotes 1' (see github issue)**
+I manually checked all briefs with more than one reference of `APPENDIX` and the first instance of each is referring to the beginning of the appendix and I also randomly checked many briefs with only 1 reference so we can remove all text after this.
 
 ```{r}
-#remove text with omitted within 3 words of footnotes
-amicus_clean <- amicus_clean %>% mutate(
+amicus <- amicus %>% mutate(
          txt_short = case_when(
-           grepl('(footnotes (\\w+\\s){0,3}omitted)|(omitted (\\w+\\s){0,3}footnotes)', txt_short) ~ 
-             gsub(pattern = '(footnotes (\\w+\\s){0,3}omitted)|(omitted (\\w+\\s){0,3}footnotes)',
-                  replacement = "", x = txt_short),
-           T ~ txt_short)
-          )
-
-#remove text after footnotes
-amicus_clean <- amicus_clean %>% mutate(
-         txt_short = str_squish(txt_short),
-         txt_short = case_when(
-           grepl("footnotes", txt_short) ~ 
-             gsub(pattern = "footnotes.*", replacement = "", x = txt_short),
+           appendix_1a == 0 & appendix_a == 0 &
+           grepl("APPENDIX", txt_short) ~ 
+             gsub(pattern = "APPENDIX.*", replacement = "", x = txt_short),
            T ~ txt_short),
          txt_short = str_squish(txt_short))
 ```
 
-
-## more exploration
-
-I wanted to look back at the full text before capitalization was removed becuase I noticed that many times an appendix might be referenced in text but when it is full caps like `APPENDIX` it references the actual appendix.
+Checking to make sure `APPENDIX` references have been removed.
 
 ```{r}
-amicus_full <- box_read("863216279471")
-```
-
-```{r}
-amicus_ends_full <- amicus_full %>%
-  mutate(txt_full = str_squish(txt_full),
-    appendix = str_count(txt_full, "APPENDIX"),
-         appendix_1a = str_count(txt_full, "\\*1A APPENDIX"))
-
-a <- amicus_ends_full %>% select(case, brief, id, appendix, appendix_1a)
+a <- amicus %>% filter(appendix_1a == 0 & appendix_a == 0) %>%
+  mutate(appendix = str_count(txt_short, "APPENDIX"))
 
 table(a$appendix)
 ```
 
-```{r}
-table(a$appendix_1a)
-```
-
-Only 53 instances contain `*1A APPENDIX` while 202 contain the word `APPENDIX`.
-
-There were 55 that contained `*1a appendix` without caps so I think it would be good to ignore cases in this instance but `appendix` is mentioned in 295 docs so filtering down to the 202 with `APPENDIX` and handling the 93 remaining might be useful. I also didn't check for `Appendix` vs `appendix` but cases might help us narrow down here.
 
 ```{r}
-amicus_lower <- amicus_full %>% mutate(txt_full = str_to_lower(txt_full))
+a <- amicus %>% filter(appendix_1a == 0 & appendix_a == 0 & appendix == 0) %>%
+  mutate(Appendix = str_count(txt_short, "Appendix"),
+         appendix_all = str_count(txt_short, "appendix"))
 
-amicus_lower_ends <- amicus_lower %>%
-  mutate(txt_full = str_squish(txt_full),
-    appendix = str_count(txt_full, "appendix"),
-         appendix_1a = str_count(txt_full, "\\*1a appendix"))
+table(a$Appendix)
+```
 
-a_lower <- amicus_lower_ends %>% select(case, brief, id, appendix, appendix_1a)
+There are 83 briefs remaining that mention `Appendix`.
 
-table(a_lower$appendix)
+```{r}
+table(a$appendix_all)
+```
+
+There are 18 briefs remaining that mention `appendix`.
+
+In taking a further look at some of these briefs, there is not really a good pattern to remove the rest of the appendices at scale.
+
+
+
+# Removing Footnotes
+
+First we want to convert all the text to lower case.
+
+```{r}
+amicus <- amicus %>% mutate(txt_short = str_to_lower(txt_short))
+```
+
+Now we want to check the mentions of `footnotes` in the briefs.
+
+```{r}
+amicus <- amicus %>%
+  mutate(footnotes = str_count(txt_short, "footnotes"))
+
+table(amicus$footnotes)
+```
+
+There are 345 briefs that mention footnotes.
+
+After manual inspection, we noticed many instances of footnotes that refer to the actual footnotes section are `footnotes counsel of record` and `footnotes 1`. We want to check their mentions in the briefs.
+
+```{r}
+amicus <- amicus %>%
+  mutate(footnotes_cor = str_count(txt_short, "footnotes counsel of record"),
+         footnotes_1 = str_count(txt_short, "footnotes 1"))
+
+table(amicus$footnotes_cor)
+```
+
+
+```{r}
+table(amicus$footnotes_1)
+```
+
+We want to remove instance of `footnotes counsel of record` or `footnotes 1` that are in the list of footnotes ids.
+
+```{r}
+amicus <- amicus %>% mutate(
+         txt_short = case_when(
+           grepl("footnotes counsel of record", txt_short)
+           & (id %in% footnotes_ids$id) ~ 
+             gsub(pattern = "footnotes counsel of record.*", replacement = "", x = txt_short),
+           grepl("footnotes 1", txt_short)
+           & (id %in% footnotes_ids$id | id == '861814132010') ~ 
+             gsub(pattern = "footnotes 1.*", replacement = "", x = txt_short),
+           T ~ txt_short),
+         txt_short = str_squish(txt_short))
+```
+
+Checking to make sure `footnotes counsel of record` and `footnotes 1` references have been removed.
+
+```{r}
+a <- amicus %>%
+  mutate(footnotes_cor = str_count(txt_short, "footnotes counsel of record"),
+         footnotes_1 = str_count(txt_short, "footnotes 1"))
+
+table(a$footnotes_1)
 ```
 
 ```{r}
-table(a_lower$appendix_1a)
+table(a$footnotes_cor)
 ```
+
+Now let's see how many remaining briefs mention footnotes.
+
+```{r}
+a <- amicus %>% filter(footnotes_cor == 0 & footnotes_1 == 0) %>% 
+  mutate(footnotes = str_count(txt_short, "footnotes"))
+
+table(a$footnotes)
+```
+
+There are 149 briefs remaining that mention `footnotes`.
+
