@@ -68,8 +68,7 @@ amicus <- amicus %>%
                                      x = txt_full, ignore.case = TRUE),
            id == 861822667487 ~ gsub(pattern = ".*introduction", replacement = "",
                                      x = txt_full, ignore.case = TRUE),
-           #this line can be changed to T ~ '' once the raw brief file is updated
-           T ~ txt_full),
+           T ~ ''),
          txt_short = str_squish(txt_short))
 ```
 
@@ -133,10 +132,8 @@ table(a$appendix_1a)
 From some manual inspection, it looks like when `APPENDIX A` is mentioned in all caps that is it referring to the first section of the appendix.
 
 Let's see how many documents have `APPENDIX A` in them.
-
 ```{r}
-amicus <- amicus %>% filter(appendix_1a == 0) %>%
-  mutate(appendix_a = str_count(txt_short, "APPENDIX A"))
+amicus$appendix_a <- ifelse(amicus$appendix_1a < 1, str_count(amicus$txt_short, "APPENDIX A"), 0)
 
 table(amicus$appendix_a)
 ```
@@ -173,8 +170,8 @@ table(a$appendix_a)
 ## Handling other forms of appendix
 
 ```{r}
-amicus <- amicus %>% filter(appendix_1a == 0 & appendix_a == 0) %>% 
-  mutate(appendix = str_count(txt_short, "APPENDIX"))
+amicus$appendix <- ifelse(amicus$appendix_1a < 1 & amicus$appendix_a < 1, 
+                            str_count(amicus$txt_short, "APPENDIX"), 0)
 
 table(amicus$appendix)
 ```
@@ -225,8 +222,6 @@ There are 18 briefs remaining that mention `appendix`.
 
 In taking a further look at some of these briefs, there is not really a good pattern to remove the rest of the appendices at scale.
 
-
-
 # Removing Footnotes
 
 First we want to convert all the text to lower case.
@@ -244,7 +239,7 @@ amicus <- amicus %>%
 table(amicus$footnotes)
 ```
 
-There are 345 briefs that mention footnotes.
+There are 352 briefs that mention footnotes.
 
 After manual inspection, we noticed many instances of footnotes that refer to the actual footnotes section are `footnotes counsel of record` and `footnotes 1`. We want to check their mentions in the briefs.
 
@@ -290,14 +285,74 @@ table(a$footnotes_1)
 table(a$footnotes_cor)
 ```
 
+There also seems to be a pattern of `footnotes *` to reference the footnotes section. Let's see how many of this reference are in the briefs.
+
+```{r}
+amicus$footnotes_star <- ifelse(amicus$footnotes_cor < 1 & amicus$footnotes_1 < 1,
+                                str_count(amicus$txt_short, "footnotes \\*"), 0)
+
+table(amicus$footnotes_star)
+```
+
+There are 94 briefs that mention `footnotes *` where the footnotes have not yet been removed. We can remove all text after this string as well.
+
+```{r}
+amicus <- amicus %>% mutate(
+         txt_short = case_when(
+           grepl("footnotes \\*", txt_short) ~ 
+             gsub(pattern = "footnotes \\*.*", replacement = "", x = txt_short),
+           T ~ txt_short),
+         txt_short = str_squish(txt_short))
+```
+
+
+Checking to make sure `footnotes *` references have been removed.
+
+```{r}
+a <- amicus %>%
+  mutate(footnotes_star = str_count(txt_short, "footnotes \\*"))
+
+table(a$footnotes_star)
+```
+
 Now let's see how many remaining briefs mention footnotes.
 
 ```{r}
-a <- amicus %>% filter(footnotes_cor == 0 & footnotes_1 == 0) %>% 
+a <- amicus %>% filter(footnotes_cor == 0 & footnotes_1 == 0 & footnotes_star == 0 &
+                        appendix_1a == 0 & appendix_a == 0 & appendix == 0) %>% 
   mutate(footnotes = str_count(txt_short, "footnotes"))
 
 table(a$footnotes)
 ```
 
-There are 149 briefs remaining that mention `footnotes`.
+There are 47 briefs remaining that mention `footnotes`.
+
+Now let's see how many remaining briefs mention appendices.
+
+```{r}
+a <- amicus %>% filter(appendix_1a == 0 & appendix_a == 0 & appendix == 0) %>% 
+   mutate(appendix_all = str_count(txt_short, "appendix"))
+
+table(a$appendix_all)
+```
+
+There are only 52 briefs remaining that mention an appendix that have not already had their appendix removed.
+
+Hoe many briefs had neither an appendix or footnotes removed?
+
+```{r}
+amicus %>% filter(appendix_1a == 0 & appendix_a == 0 & appendix == 0 &
+                   footnotes_cor == 0 & footnotes_1 == 0 & footnotes_star == 0) %>% count()
+```
+253 briefs had neither an appendix or footnotes removed.
+
+Now we want to save the new shortened version of the text into a csv.
+
+```{r}
+#amicus <- amicus %>% select(case, brief, id, txt_short)
+
+#box_write(amicus,
+#          file_name = "shortened-amicus-brief-text.csv",
+#          dir_id = 145990409196)
+```
 
