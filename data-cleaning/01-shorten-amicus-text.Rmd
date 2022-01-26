@@ -1,6 +1,6 @@
 ---
-title: "Removing footnotes and appendices"
-author: "Sarah Torrence"
+title: "Shorten Amicus Text"
+author: "Sarah Torrence and Amanda Konet"
 date: "`r Sys.Date()`"
 output: pdf_document
 ---
