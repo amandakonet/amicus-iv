@@ -327,6 +327,16 @@ table(a$footnotes)
 
 There are 47 briefs remaining that mention `footnotes`.
 
+```{r}
+#saving these ids to a csv
+footnotes_not_removed <- a %>% filter(footnotes > 0) %>% select(id)
+
+#box_write(footnotes_not_removed,
+#          file_name = "footnotes-not-removed.csv",
+#          dir_id = 145990409196)
+```
+
+
 Now let's see how many remaining briefs mention appendices.
 
 ```{r}
@@ -336,7 +346,17 @@ a <- amicus %>% filter(appendix_1a == 0 & appendix_a == 0 & appendix == 0) %>%
 table(a$appendix_all)
 ```
 
-There are only 52 briefs remaining that mention an appendix that have not already had their appendix removed.
+There are only 62 briefs remaining that mention an appendix that have not already had their appendix removed.
+
+```{r}
+#saving these ids to a csv
+appendix_not_removed <- a %>% filter(appendix_all > 0) %>% select(id)
+
+#box_write(appendix_not_removed,
+#          file_name = "appendix-not-removed.csv",
+#          dir_id = 145990409196)
+```
+
 
 Hoe many briefs had neither an appendix or footnotes removed?
 
