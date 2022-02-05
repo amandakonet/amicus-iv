@@ -1,0 +1,344 @@
+---
+title: "Amicus II: Searching briefs"
+output: html_document
+---
+
+
+# Load packages
+
+```{r include=FALSE}
+# Load packages 
+library(boxr) # accessing box API
+library(tidyverse) # reading data
+library(quanteda) # text mining
+box_auth()
+```
+
+
+# Load Data 
+```{r}
+briefTextDF <- read_csv("../-processed-data/stop_words_removed/a2-step-2-preprocess-data-brief-text-cleaned.csv")
+searchTerms <- read_csv("../-processed-data/stop_words_removed/a2-step-2-preprocess-search-terms-cleaned.csv")
+```
+
+# Duplicate Brief
+
+Filter out duplicate June v. Russo Briefs 
+
+```{r}
+briefTextDF <- briefTextDF %>% 
+  filter(!grepl("2,556", ignore.case = T, brief_name))
+```
+
+
+Ensure incorrect use of fact(s), report(s/ing/ed)
+
+```{r}
+briefTextDF <- briefTextDF %>%
+  mutate(
+    brief_text_clean = case_when(
+      brief_case_clean == "City of Akron v Akron Center for Rep Health" ~ gsub(
+        pattern = " fact | fact\"|\"fact\"|facts",
+        replacement = "",
+        x = brief_text_clean,
+        ignore.case = T
+      ),
+      brief_case_clean %in% c(
+        "Planned Parenthood v Ashcroft",
+        "Thornburgh v American Council of OBGYNs"
+      ) ~
+        gsub(
+          pattern = "report|reports|reporting|reported",
+          replacement = "",
+          x = brief_text_clean,
+          ignore.case = T
+        ),
+      TRUE ~ brief_text_clean
+    )
+  )
+```
+
+
+# Tokenizing and weighting terms
+
+## Create corpus 
+
+In order to generate the frame frequencies, we'll begin by creating a corpus, `amicusCorp`. The corpus is like a file cabinent - it contains all of the texts in our dataset. The one we're creating below contains the preprocessed amicus brief text, `briefTextDF$brief_text_clean`. 
+
+Just like when you file away documents in real life, it's important to label items so that you can easily group and categorize them during your analysis. In text mining, these labels/variables are referred to as **meta data**. We'll label the texts in our corpus using the `docvars()` and `docnames()` functions. 
+
+Another way to understand how these functions work is imagining that we're moving all of the important variables in our original data frame, `briefTextDF`, to the corpus, `briefCorp`.
+
+
+```{r}
+brief_corp <- briefTextDF$brief_text_clean %>%
+  corpus()
+
+# Add meta data to corpus
+docvars(brief_corp, "brief_case") <- briefTextDF$brief_case_clean # case name cleaned
+docvars(brief_corp, "brief_name") <- briefTextDF$brief_name # brief
+docvars(brief_corp, "brief_id") <- briefTextDF$brief_id # file id
+docvars(brief_corp, "brief_type") <- briefTextDF$brief_type # party vs amicus
+docvars(brief_corp, "brief_party") <- ifelse(briefTextDF$brief_fem == TRUE, "fem", "opp") # feminist or opponent 
+
+# Name documents in corpus
+docnames(brief_corp) <- briefTextDF$brief_name
+
+summary(brief_corp) %>% head()
+```
+
+
+## Create frame dictionary
+
+This dictionary will be used to filter out frame words from paragraphs when counting word frequency. 
+
+```{r}
+# Remove duplicates
+searchTerms <- searchTerms %>%
+  mutate(word = word_cleaned) %>%
+  select(abb, word) %>%
+  unique()
+
+# Get words associated with frames
+getFrames <- function(frame){ 
+  searchTerms %>%
+    filter(abb == frame) %>%
+    select(word)
+  }
+
+# Initialize list
+searchFrames <- list()
+
+# Get unique frames
+frames <- unique(searchTerms$abb)
+
+# Pull words for each frame and save in list
+for(i in 1:length(frames)){ 
+  searchFrames[i] <- getFrames(frames[i])
+}
+
+# Name items in list
+names(searchFrames) <- frames
+
+frameDict <- dictionary(searchFrames)
+
+# Check output
+frameDict
+```
+
+# Look up frames
+
+**Note on arguments in `tokens()` function**: removing punctuation and numbers from terms increases counts. See `amicus-exploring-counting-frames` script to go over evidence. 
+
+```{r}
+# Tokenize briefs
+toks <- tokens(brief_corp, remove_punct = TRUE, remove_numbers = TRUE)
+```
+
+## Create brief summary statistics
+
+The `brief_corp_summary` data frame contains the summary statistics of all the briefs in our corpus, `brief_corp`. The one thing it's missing is the number of tokens (i.e. words) in each brief. 
+
+The `summary()` function takes 3 arguments: 
+
+* **object**: the corpus object (`brief_corp`)
+* **n**: the number of observations; the default is 100, but since we want the summary for all of the texts in our corpus, we'll set the value to `nrow(briefTextDF)` since the number of rows (calculated using the function `nrow()`) in the `briefTextDF` is equal to the total number of observations (i.e. briefs) in our corpus.
+* **showmeta**: we'll set this value equal to TRUE in order to include the metadata we created earlier. 
+
+You'll notice that the `brief_corp` data frame has a column `Tokens` - it's the number of tokens (i.e. words) **before** removing punctuation and digits from the briefs. We'll compare these values to the values we create in the `word_ct` column in a few. 
+
+```{r}
+# Generate summary of amicusCorp
+brief_corp_summary <- summary(object = brief_corp, 
+                      n = nrow(briefTextDF), # default is 100, we need all observations 
+                      showmeta = TRUE) %>% # add meta data to summary
+  as.data.frame() 
+
+# Look at first 6 observations 
+tail(brief_corp_summary)
+```
+
+Now it's time to find out how many words are in the briefs after we tokenize them and remove the punctuation and digits. We can do this by using the `ntokens()` function - this function gets the counts of tokens (total words/features) in our `toks` object.   
+
+The `nToks` data frame contains to columns: 
+* **brief_name**: the name of the brief associated with the `ntoken(toks)` object (i.e. value in `brief_n_words`); this column allows us to join the data frame with the `amicusCorpSummary` data frame. 
+* **brief_n_words**: the number of tokens (i.e. words) in each brief **after** removing the punctuation and digits from the briefs. 
+
+We'll join this information to `amicusCorpSummary` to create the data frame `briefInfo`. 
+
+```{r}
+# Total number of tokens (before pulling frame words)
+nToks <- data.frame(brief_name = names(ntoken(toks)), 
+                     word_ct = ntoken(toks))
+
+# Look at first 6 observations
+head(nToks)
+```
+
+```{r}
+brief_info <- brief_corp_summary %>%
+  left_join(nToks, by = c("brief_name")) %>%
+  select(brief_case, brief_name, brief_party, brief_type, word_ct, brief_id)
+
+head(brief_info)
+```
+
+### OPTIONAL: Comparing word count before/after tokenizing briefs
+
+We can compare the word count before removing the puncutation and digits to the word count after removing the puncutation and digits by running the code chunk below. 
+
+```{r}
+# Compare word counts
+# compare_brief_n_words <- amicusCorpSummary %>%
+#  select(brief_name, 
+#         brief_n_words_raw = Tokens) %>% # number of tokens before removing punctuation and digits 
+#  left_join(nToks, by = c("brief_name")) %>% 
+#  select(brief_name, brief_n_words_raw, brief_n_words) %>%
+#  mutate(same_number = brief_n_words == brief_n_words_raw) # are word counts the same
+```
+
+If the value in the column `same_number` is TRUE, then the brief word count did not change after removing the punctuation and digits. 
+If the value in the column `same_number` is FALSE, then the brief word count changed (it decreased) after removing the punctuation and digits. 
+
+We can use the `count(same_number)` to count the number of observations that are TRUE and FALSE in the `same_number` column, and based on the output, all 670 word counts changed after removing the punctuation and digits. 
+
+```{r}
+# Did any word counts stay the same? Nope
+# compare_brief_n_words %>%
+#   count(same_number)
+```
+
+Taking it one more step, we can look at how the word count values changed - we'd expect them to decrease after removing the puncutation and digits, but let's double check by running one more test: 
+
+```{r}
+# Did any word counts increase after removing punctuation and digits? Nope (whew!)
+# compare_brief_n_words %>%
+#   mutate(greater_number = brief_n_words > brief_n_words_raw) %>% 
+#   filter(greater_number == TRUE)
+```
+
+## Generate frame frequencies
+
+Now that we've created our `brief_info` data frame, it's time to generate the frame frequencies and attach the data frames together. 
+
+The `brief_frames_raw` data frame contains the raw frame frequencies joined with the `brief_info` data frame. The resulting dataframe of this step will be one row per case per frame, with a column for the count of that frame. This will make it very easy to generate the frame frequencies per Holly's specifications, which is: 
+
+(# of words/phrases for a particular frame) / (# of all words in the brief)
+
+
+```{r}
+# Search for frames
+brief_dfm <- tokens_lookup(toks, dictionary = frameDict, nested_scope = "dictionary", case_insensitive = FALSE, valuetype = "fixed") %>%
+  dfm()
+
+# Generate raw frequencies
+brief_frames_raw <- brief_dfm %>%
+  convert(to = "data.frame") %>%
+  rename(brief_name = doc_id) %>%
+  left_join(brief_info, by = "brief_name") %>% # join with brief_info
+  # remove "purpose of performance" counts from "purpose" counts
+  mutate(p_new = p - pop) %>% 
+  select(brief_case, brief_id, brief_name, brief_type, brief_party, word_ct, an:wc)
+
+# Check out first 6 observations 
+head(brief_frames_raw, 10)
+```
+**Update 4/22/21**: Remove instances of word usage from the evidence experts frame that we don't want to count.
+
+For Thornburgh, remove counts of the words "fact(s)" and "evidence" from the opponent/antiabortion party brief. Per github issue #92, 6+14 instances of the eeII frame must be subtracted
+
+```{r}
+brief_frames_raw <- brief_frames_raw %>%
+  mutate(eeii = ifelse(
+    grepl("Thornburgh", brief_case) &
+      brief_type == "Party" & brief_party == "opp",
+    eeii - (6 + 14),
+    eeii
+  ))
+
+#brief_frames_raw %>%
+#  filter(grepl("Thornburgh", brief_case), brief_type == "Party", brief_party == "opp") %>% 
+#  select(brief_case, brief_type, brief_party, eeii)
+```
+
+For City of Akron, remove the counts of "fact" from select amicus (opp + fem briefs) found in step 3b. 
+
+```{r}
+akron_cases <- c("City of Akron v Akron Center for Rep Health. Amici Brief for Petitioner, by United Families Foundation and Women Exploited.docx", "City of Akron v Akron Center for Rep Health. Amici Brief for Respondent (feminist), by American College of OBGYNs et al.docx", "City of Akron v Akron Center for Rep Health. Amici Brief for Respondent (feminist), by Planned Parenthood Federation of America et al.docx", "City of Akron v Akron Center for Rep Health. Amicus Brief for Petitioner, by Catholic League for Religious and Civil Rights.docx", "City of Akron v Akron Center for Rep Health. Amicus Brief for Petitioner, by Feminists for Life.docx", "City of Akron v Akron Center for Rep Health. Amicus Brief for Petitioner, by Legal Defense Fund for Unborn Children.docx", "City of Akron v Akron Center for Rep Health. Amicus Brief for Petitioner, by Womenkind, Inc.docx", "City of Akron v Akron Center for Rep Health. Amicus Brief for Respondent (feminist), by Certain Religious Organizations.docx", "City of Akron v Akron Center for Rep Health. Amicus Brief for Respondent (feminist), by the American Public Health Association.docx")
+
+#brief_frames_raw %>% 
+#  filter(brief_name %in% akron_cases) %>% 
+#  select(brief_name, eeii)
+
+brief_frames_raw <- brief_frames_raw %>% 
+  mutate(eeii = case_when(
+    brief_name == "City of Akron v Akron Center for Rep Health. Amici Brief for Petitioner, by United Families Foundation and Women Exploited.docx" ~ eeii - 1,
+    brief_name == "City of Akron v Akron Center for Rep Health. Amici Brief for Respondent (feminist), by American College of OBGYNs et al.docx" ~ eeii - 2,
+    brief_name == "City of Akron v Akron Center for Rep Health. Amici Brief for Respondent (feminist), by Planned Parenthood Federation of America et al.docx" ~ eeii - 2,
+    brief_name == "City of Akron v Akron Center for Rep Health. Amicus Brief for Petitioner, by Catholic League for Religious and Civil Rights.docx" ~ eeii - 2,
+    brief_name == "City of Akron v Akron Center for Rep Health. Amicus Brief for Petitioner, by Feminists for Life.docx" ~ eeii - 2,
+    brief_name == "City of Akron v Akron Center for Rep Health. Amicus Brief for Petitioner, by Legal Defense Fund for Unborn Children.docx" ~ eeii - 6,
+    brief_name == "City of Akron v Akron Center for Rep Health. Amicus Brief for Petitioner, by Womenkind, Inc.docx" ~ eeii - 1,
+    brief_name == "City of Akron v Akron Center for Rep Health. Amicus Brief for Respondent (feminist), by Certain Religious Organizations.docx" ~ eeii - 1,
+    brief_name == "City of Akron v Akron Center for Rep Health. Amicus Brief for Respondent (feminist), by the American Public Health Association.docx" ~ eeii - 1,
+    T ~ eeii
+  ))
+```
+
+
+
+Get frame frequencies
+
+```{r}
+# Generate frame frequencies 
+brief_frames_freq <- brief_frames_raw %>% 
+  pivot_longer(c(an:wc), names_to = "frame", values_to = "frame_ct") %>% 
+  mutate(frame_freq = frame_ct/word_ct) %>% 
+  select(-frame_ct) %>% 
+  pivot_wider(names_from = "frame", values_from = frame_freq)
+
+brief_frames_freq %>% head(10)
+```
+
+## Raw counts + freq
+
+Dataframe with raw counts and frequencies
+
+```{r}
+brief_frames <- brief_frames_raw %>% 
+  left_join(., brief_frames_freq, 
+            by = c("brief_case", "brief_id", "brief_name", "brief_type", "brief_party", "word_ct"), 
+            suffix = c("_raw", "_freq")) %>% 
+  select(brief_case:word_ct, sort(colnames(.)))
+
+brief_frames %>% head(10)
+```
+
+
+Summary by case
+
+```{r}
+# Total word count of briefs by case
+brief_frames %>%
+  group_by(brief_case) %>%
+  summarise(total_brief_words = sum(word_ct)) 
+```
+
+## Save results
+
+```{r}
+# Save files
+write_csv(brief_frames_raw, "../-processed-data/stop_words_removed/a2-step-3-search-briefs-raw-freq.csv")
+write_csv(brief_frames_freq,"../-processed-data/stop_words_removed/a2-step-3-search-briefs-ter-freq.csv")
+write_csv(brief_frames, "../-processed-data/stop_words_removed/a2-step-3-search-briefs-full-freq.csv")
+
+# all stops removed folder
+#box_write(brief_frames, dir_id = "126163615802", "search-briefs-full-freq.csv") 
+
+# group a stops folder
+box_write(brief_frames, dir_id = "126482779345", "search-briefs-full-freq.csv") 
+
+rm(list = ls())
+```
+
+
