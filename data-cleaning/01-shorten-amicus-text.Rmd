@@ -366,13 +366,55 @@ amicus %>% filter(appendix_1a == 0 & appendix_a == 0 & appendix == 0 &
 ```
 253 briefs had neither an appendix or footnotes removed.
 
+We manually went in and added the string "mnopqrst" to all briefs in which 'footnotes' and/or 'appendix' was found but not removed. We can now removed all text after this random string. There are two exceptions below that due to being pdfs that we could not edit, we will handle separately.
+
+Case | Brief Name | ID | Text 
+-- | -- | -- | --
+WWH v Hellerstedt | Whole Women's Health v Hellerstedt. Amicus brief for Respondents by Physicians with Experience Treating Women in Rural or Emergency Settings.pdf | 861822669887 | Listing of Amici Physicians with Experience Treating Women in Rural or Emergency Settings
+WWH v Hellerstedt | Whole Women's Health v Hellerstedt. Amicus brief for Respondents by Right to Life Advocates, Inc.pdf | 861824109102 | App. 1
+
+```{r}
+counts <- amicus %>%
+  mutate(manual = str_count(txt_short, 'mnopqrst'))
+
+table(counts$manual)
+```
+
+```{r}
+amicus <- amicus %>% mutate(
+         txt_short = case_when(
+           grepl("mnopqrst", txt_short) ~ 
+             gsub(pattern = "mnopqrst.*", replacement = "", x = txt_short),
+           id == 861822669887 ~ gsub(pattern = "a-1 appendix.*", 
+                    replacement = "", x = txt_short, ignore.case = TRUE),
+           id == 861824109102 ~ gsub(pattern = "App. 1.*", 
+                    replacement = "", x = txt_short, ignore.case = TRUE),
+           T ~ txt_short),
+         txt_short = str_squish(txt_short))
+```
+
+Checking to make sure we did removed this text:
+
+```{r}
+counts <- amicus %>%
+  mutate(manual = str_count(txt_short, 'mnopqrst'))
+
+table(counts$manual)
+```
+
+```{r}
+#amicus %>% filter(id == 861822669887) %>% pull(txt_short)
+```
+
+
+
 Now we want to save the new shortened version of the text into a csv.
 
 ```{r}
-#amicus <- amicus %>% select(case, brief, id, txt_short)
-
-#box_write(amicus,
-#          file_name = "shortened-amicus-brief-text.csv",
-#          dir_id = 145990409196)
+# amicus <- amicus %>% select(case, brief, id, txt_short)
+# 
+# box_write(amicus,
+#           file_name = "shortened-amicus-brief-text.csv",
+#           dir_id = 145990409196)
 ```
 
