@@ -217,7 +217,7 @@ box_write(df_frames_freq, dir_id = "154895322313", "amicus_chunks_frames_density
 
 # Finding High Label Density Chunks
 
-Now we can find the top 5 chunks with the highest label density for each of the frames. If 
+Now we can find the top 5 chunks with the highest label density for each of the frames. If there are more than 5 chunks with the highest label density, then all are added to the final data frame.
 
 ```{r}
 #create data frame with 0 rows and 26 columns
