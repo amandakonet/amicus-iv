@@ -1,0 +1,257 @@
+---
+title: "Create Label Density"
+author: "Sarah Torrence"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+The purpose of this script is to find briefs with high label density based on words and phrases that are used frequently in feminist and opposition frames, or arguments. We will do this through a dictionary of frames and the words/phrases associated with those frames in which we will search for these terms within each chunk of text from briefs. Label density will be defined as the total number of times terms associated with each frame is used within the chunk of text. 
+
+The end goal is to find the top 5 text chunks with the highest label density for each frame.
+
+## Load Packages
+
+```{r include=FALSE}
+# Load packages 
+library(boxr) # accessing box API
+library(tidyverse) # reading data
+library(quanteda) # text mining
+box_auth()
+```
+
+## Load Data
+
+```{r}
+amicus_chunks <- box_read("915435467229")
+frames <- box_read("914901620274")
+```
+
+## Create Dictionary
+
+We are only focusing on the following frames so I will filter out the rest.
+
+* feminist briefs ("fem" in brief title): 
+    + undue burden (law_undueBurdenII)
+    + women's rights (law_womanRights)
+    + women's citizenship (womanCitizenship)
+    + compulsory motherhood (compulsoryMotherhood)
+* opposition briefs: 
+    + morality (morality)
+    + abortion negative (abortionNegativeII)
+    + psychological harm (psy_harm)
+    + fetus (actor_fetus)
+* both types: 
+    + evidence (evidence_combine)
+    + health (health)
+
+We want to separate these into a fem dictionary and opp dictionary as we only want to search for fem terms in fem briefs and opp terms in opp briefs. We will include `evidence_combine` and `health` in both dictionaries as we want to search for related terms in both fem and opp briefs.
+
+```{r}
+#frames to keep
+fem_frames <- c('law_undueBurdenII', 'law_womanRights', 'womanCitizenship', 'compulsoryMotherhood', 'evidence_combine', 'health')
+
+opp_frames <- c('morality', 'abortionNegativeII', 'psy_harm', 'actor_fetus', 'evidence_combine', 'health')
+
+#filter for only these frames
+fem_df <- frames %>% filter(code %in% fem_frames) %>% select(code, word_cleaned) %>% unique()
+
+opp_df <- frames %>% filter(code %in% opp_frames) %>% select(code, word_cleaned) %>% unique()
+```
+
+Here are a couple functions we will use to create dictionaries with frames as keys and associated terms as values.
+
+```{r}
+# Get terms associated with each frames
+getFrames <- function(frame){ 
+  frames %>%
+    filter(code == frame) %>%
+    select(word_cleaned)
+    }
+
+#create dictionary
+create_dict <- function(frame_df){
+    
+    # Initialize list
+    searchFrames <- list()
+    
+    # Get unique frames
+    frames <- unique(frame_df$code)
+    
+    # Pull words for each frame and save in list
+    for(i in 1:length(frames)){ 
+      searchFrames[i] <- getFrames(frames[i])
+    }
+    
+    # Name items in list
+    names(searchFrames) <- frames
+    
+    frameDict <- dictionary(searchFrames)
+    return(frameDict)
+}
+```
+
+Using the above functions to create a fem and opp dictionary.
+
+```{r}
+fem_dict <- create_dict(fem_df)
+opp_dict <- create_dict(opp_df)
+```
+
+
+## Create Corpus
+
+Now that we have dictionaries of search terms, we need to create a corpus to search through for fem and opp.
+
+```{r}
+#function to create a corpus
+create_corpus <- function(df){
+
+    brief_corp <- df$text %>%
+      corpus()
+    
+    # Add meta data to corpus
+    docvars(brief_corp, "brief_v1") <- df$V1 
+    docvars(brief_corp, "brief_case") <- df$case
+    docvars(brief_corp, "brief_id") <- df$id
+    docvars(brief_corp, "brief_name") <- df$brief
+    
+    # Name documents in corpus
+    docnames(brief_corp) <- df$V1
+    return(brief_corp)
+}
+
+#creating the fem and opp corpus
+fem_chunks <- amicus_chunks %>% filter(fem_brief == 1)
+fem_corp <- create_corpus(fem_chunks)
+
+opp_chunks <- amicus_chunks %>% filter(fem_brief == 0)
+opp_corp <- create_corpus(opp_chunks)
+```
+
+Now we can tokenize each corpus. Removing punctuation and numbers will increase the number of term counts (something Amanda previously discovered).
+
+```{r}
+# Tokenize brief chunks
+fem_toks <- tokens(fem_corp, remove_punct = TRUE, remove_numbers = TRUE)
+opp_toks <- tokens(opp_corp, remove_punct = TRUE, remove_numbers = TRUE)
+```
+
+Here we can create a summary data frame of each chunk where we will add the frequency of each frame to later.
+
+```{r}
+create_summary <- function(corp, chunks){
+    # Generate summary of corpus
+    corp_summary <- summary(object = corp, 
+                          n = nrow(chunks), # default is 100, we need all observations 
+                          showmeta = TRUE) %>% # add meta data to summary
+      as.data.frame()
+    return(corp_summary)
+}
+
+#creating summary for fem and opp
+fem_summary <- create_summary(fem_corp, fem_chunks)
+opp_summary <- create_summary(opp_corp, opp_chunks)
+```
+
+## Generate Frame Frequencies 
+
+Now we can use the dictionary and tokens to find the frequency of each frame within each chunk of text and add all this information together with the summary information above in a clean data frame.
+ 
+```{r}
+#get the frequency of each frame and add to summary data frame
+get_freqs <- function(tokens, dict, summary_df){
+        #searching chunks for frames
+        df <- tokens_lookup(tokens, dictionary = dict, nested_scope = "dictionary",
+                              case_insensitive = FALSE, valuetype = "fixed") %>% dfm()
+        
+        #creating data frame of summary info and frequencies
+        df <- df %>% convert(to = "data.frame") %>% 
+            rename(brief_v1 = doc_id) %>% 
+            left_join(summary_df, by = "brief_v1") %>% 
+            select(-Text, -Types, -Tokens, -Sentences)
+        return(df)
+}
+
+#convert v1 to character for joining purposes
+fem_summary$brief_v1 <- as.character(fem_summary$brief_v1)
+opp_summary$brief_v1 <- as.character(opp_summary$brief_v1)
+
+#call frequency function on fem and opp
+fem <- get_freqs(fem_toks, fem_dict, fem_summary)
+opp <- get_freqs(opp_toks, opp_dict, opp_summary)
+```
+
+The final step is to add back fem and opp into one large data frame with all chunks of text and label density.
+
+```{r}
+df_frames_freq <- bind_rows(fem, opp)
+
+amicus_chunks$V1 <- as.character(amicus_chunks$V1)
+
+df_frames_freq <- df_frames_freq %>% left_join(amicus_chunks, by = c('brief_v1' = 'V1')) %>% 
+    select(V1 = brief_v1, case, brief_name, id, fem_brief, text, compulsorymotherhood, evidence_combine, health, law_undueburdenii, law_womanrights, womancitizenship, abortionnegativeii, actor_fetus, morality, psy_harm)
+```
+
+We also want a boolean value of whether a frame was used at all in each chunk. If a frame was used we will encode a value of 1, if not, a value of 0.
+
+```{r}
+create_bool <- function(df, variables){
+    for (var in variables){
+        df[paste0(var,'_bool')] <- ifelse(df[var] > 0, 1, 0)
+    }
+    return(df)
+}
+
+v <- c('compulsorymotherhood', 'evidence_combine', 'health', 'law_undueburdenii',
+       'law_womanrights', 'womancitizenship', 'abortionnegativeii', 'actor_fetus', 
+       'morality', 'psy_harm')
+df_frames_freq <- create_bool(df_frames_freq, v)
+```
+
+
+## Saving results
+
+```{r}
+box_write(df_frames_freq, dir_id = "154895322313", "amicus_chunks_frames_density.csv") 
+```
+
+# Finding High Label Density Chunks
+
+Now we can find the top 5 chunks with the highest label density for each of the frames. If 
+
+```{r}
+#create data frame with 0 rows and 26 columns
+df <- data.frame(matrix(ncol = 26, nrow = 0))
+
+#provide column names
+colnames(df) <- c("V1","case","brief_name","id","fem_brief","text","compulsorymotherhood",
+                  "evidence_combine","health","law_undueburdenii","law_womanrights",
+                  "womancitizenship","abortionnegativeii","actor_fetus","morality",
+                  "psy_harm","compulsorymotherhood_bool", "evidence_combine_bool",
+                  "health_bool","law_undueburdenii_bool", "law_womanrights_bool",
+                  "womancitizenship_bool", "abortionnegativeii_bool", "actor_fetus_bool",
+                  "morality_bool","psy_harm_bool")
+
+df_na <- df_frames_freq
+df_na[is.na(df_na)] <- 0
+for (var in v){
+    x <- tail(df_na[order(df_na[var]),var],5) %>% unique
+    for (i in 1:length(x)){
+        y <- df_frames_freq[df_frames_freq[var] == x[i],]
+        df <- rbind(df, y)
+    }
+}
+
+df <- df %>% unique()
+```
+
+## Save the Results
+
+```{r}
+box_write(df, dir_id = "154895322313", "highest_label_density_chunks.csv")
+```
+
+
+
+
+
