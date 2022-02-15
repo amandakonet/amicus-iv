@@ -248,10 +248,48 @@ df <- df %>% unique()
 ## Save the Results
 
 ```{r}
-box_write(df, dir_id = "154895322313", "highest_label_density_chunks.csv")
+#box_write(df, dir_id = "154895322313", "highest_label_density_chunks.csv")
 ```
 
 
+# Label Distribution in Manually Labeled Dataset
 
+Read in labeled dataset
+
+```{r}
+labeled_amicus <- box_read("913003480881") %>% 
+  janitor::clean_names()
+```
+
+## Distribution 
+
+Get an idea of the distribution of labels that exist in current dataset
+
+```{r}
+labeled_amicus %>%
+  separate_rows(., hm_label_code_s, sep = "; ", convert = FALSE) %>% 
+  select(case, text, hm_label_code_s) %>% 
+  group_by(hm_label_code_s) %>% 
+  summarize(n=n()) %>% arrange(-n)
+```
+
+## Extract text and "true" labels
+
+Note that some of the texts were split in half in order to avoid going over token limit of transformers. These are denoted as "top" or "bottom" and we can get that split by getting the len of each text and taking the first or second half. In cases where the split is not in half, the top or bottom text have been entered.
+
+```{r}
+labeled_amicus <- labeled_amicus %>% 
+  mutate(manual_divide = ifelse(!is.na(divided_1) | !is.na(divided_2), 1, 0))
+
+# d1
+d1_am <- labeled_amicus %>% filter(!is.na(divided_1)) %>% 
+  select(case:fem, -text, divided_1,d1_label_code) %>% 
+  rename(text = divided_1,label = d1_label_code)
+```
+
+```{r}
+labeled_amicus %>% 
+  filter(!is.na(divided_2) & !is.na(divided_1))
+```
 
 
