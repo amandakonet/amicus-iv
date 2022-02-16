@@ -287,15 +287,15 @@ labeled_amicus <- labeled_amicus %>%
 
 top <- labeled_amicus %>% 
   filter(excerpt_divided_if_yes_top_or_bottom_coded %in% c("top", "all(short)")) %>% 
-  select(case:fem, -text, text = divided_1, hm_label_code_s) 
+  select(case:fem, -text, text = divided_1, label = hm_label_code_s) 
 
 bottom <- labeled_amicus %>% 
   filter(excerpt_divided_if_yes_top_or_bottom_coded == "bottom") %>% 
-  select(case:fem, -text, text = divided_2, hm_label_code_s)
+  select(case:fem, -text, text = divided_2, label = hm_label_code_s)
 
 not_div <- labeled_amicus %>% 
   filter(excerpt_divided_if_yes_top_or_bottom_coded == "not divided") %>% 
-  select(case:fem, hm_label_code_s)
+  select(case:fem, label = hm_label_code_s)
 
 labeled_amicus_final <- rbind(top, bottom, not_div)
 ```
