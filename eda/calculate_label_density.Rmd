@@ -314,4 +314,28 @@ Write to Box
 #box_write(labeled_amicus_final, dir_id = "154895322313", "labeled_amicus.csv")
 ```
 
+# Clean text
+
+Read in file with the highest density reduced only to the numbers we need (see 2/14/22 notes for info)
+
+```{r}
+labeled_amicus_red <- box_read("919813766996")
+```
+
+Remove instances: Äú, Äò, Äô, Äù
+
+```{r}
+labeled_amicus_red <- labeled_amicus_red %>% 
+  mutate(text = str_replace_all(text, pattern="�", replacement=""),
+         text = str_replace_all(text, pattern="‘|’", replacement = "'"),
+         text = str_replace_all(text, pattern = "”|“", replacement= "\""),
+         text = str_replace_all(text, pattern= "\"\"\"\"\"\"\"\"", replacement ="\""))
+```
+
+
+```{r}
+box_write(labeled_amicus_red, dir_id = "154895322313", "labeled_amicus_by_density.csv")
+```
+
+
 
