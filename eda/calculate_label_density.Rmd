@@ -319,7 +319,7 @@ Write to Box
 Read in file with the highest density reduced only to the numbers we need (see 2/14/22 notes for info)
 
 ```{r}
-labeled_amicus_red <- box_read("919813766996")
+labeled_amicus_red <- box_read("922344392466")
 ```
 
 Remove instances: Äú, Äò, Äô, Äù
