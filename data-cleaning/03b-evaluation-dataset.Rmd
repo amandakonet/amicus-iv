@@ -1,0 +1,123 @@
+---
+title: "Create final evaluation dataset"
+author: "Amanda Konet"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T, warning = F, message = F, error = F)
+
+# Box access
+library(boxr)
+box_auth()
+
+# data manip
+library(tidyverse)
+library(tidytext)
+
+```
+
+
+# Create evaluation set
+
+After manual and automatic labeling (with manual validation), we can merge the two datasets to create one final evaluation dataset. 
+
+The final dataset should have the following columns in this order:
+
+case (str; name of case)
+brief (str; name of brief)
+id (str/int; brief id)
+fem_brief (int; 1 if brief written in support of feminist position; 0 o.w.)
+text (str; text chunk of brief)
+label (str; label with multiple labels separated by comma)
+
+# Automatic label set
+
+The automatic dataset has the correct rows/columns
+
+
+```{r}
+auto_label <- box_read("919813766996")
+auto_label %>% head()
+```
+
+The only thing we must do is make sure that there is only one row per text (aka, concatenate texts with multiple labels into one row). If you run the code below, you will notice this does not result in any concatenations, so we don't need to save this code and can move on.
+
+```{r}
+auto_label %>% 
+  group_by(case, brief, id, fem_brief, text) %>% 
+  mutate(label = paste0(label, collapse = ", ")) %>% 
+  unique()
+```
+
+
+# Manual label set
+
+We need to change the "fem" column and figure out how to handle texts with multiple labels.  
+
+```{r}
+manu_label <- box_read("919747295261")
+manu_label %>% head()
+```
+
+Fix fem col
+
+```{r}
+manu_label <- manu_label %>% 
+  mutate(fem = fem*1) %>% 
+  rename(fem_brief = fem)
+
+table(manu_label$fem_brief)
+```
+
+
+For the labels we need to deal with the following: multiple labels and labels with (1) attached to them. These are instances where Dr. McCammon only found 1 reference to the frame. I will be removing these labels to avoid adding noise to the data. We can add them back later if we decide to add more noise to the data... but after much deliberation I think the point of this dataset is to illustrate clear examples of each of the frames and determine whether our fine-tuned models can detect them. 
+
+First, check label distribution
+
+```{r}
+manu_label %>%
+  separate_rows(., label, sep = "; ", convert = FALSE) %>% 
+  select(case, text, label) %>% 
+  group_by(label) %>% 
+  summarize(n=n()) %>% arrange(-n)
+```
+
+
+
+To remove these, I'll start by expanding these columns to have one column per label. Below, w 
+
+```{r}
+manu_label <- manu_label %>%
+  separate_rows(., label, sep = "; ", convert = FALSE) %>%
+  # clean up mismatches
+  mutate(label = case_when(
+    label == "women's health" ~ "health",
+    label == "undue" ~ "undue burden",
+    label == "rights" ~ "women's rights",
+    label %in% c("reveal", "uncertainty") ~ "evidence",
+    T ~ label
+  )) %>% 
+  # remove instances of (1) and frames we aren't concerned w/rn
+  filter(!grepl("1", label),
+         !(label %in% c("final authority", "intersectionality", "equal protection", "primary authority"))) %>%
+  # collapse cols
+  group_by(case, brief, id, fem_brief, text) %>% 
+  mutate(label = paste0(label, collapse = ", ")) %>% 
+  unique()
+```
+
+# Combine
+
+```{r}
+final_label <- rbind(auto_label, manu_label)
+final_label %>% nrow()
+```
+
+Save to box
+
+```{r}
+box_write(final_label, dir_id = "154895322313", "evaluation_dataset.csv")
+```
+
