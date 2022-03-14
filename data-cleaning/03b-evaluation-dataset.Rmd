@@ -48,7 +48,15 @@ The only thing we must do is make sure that there is only one row per text (aka,
 auto_label %>% 
   group_by(case, brief, id, fem_brief, text) %>% 
   mutate(label = paste0(label, collapse = ", ")) %>% 
-  unique()
+  unique() %>% 
+  nrow()
+```
+
+
+Add in column indicating that these texts were automatically labeled
+
+```{r}
+auto_label <- auto_label %>% mutate(manu_label = 0)
 ```
 
 
@@ -86,7 +94,7 @@ manu_label %>%
 
 
 
-To remove these, I'll start by expanding these columns to have one column per label. Below, w 
+To remove these, I'll start by expanding these columns to have one column per label. The inconsistent labels will be corrected and irrelevant information will be removed. At the end, we re-concatenate labels to have one row per case/brief/text. Also add column indicating these texts were manually labeled.
 
 ```{r}
 manu_label <- manu_label %>%
@@ -105,7 +113,8 @@ manu_label <- manu_label %>%
   # collapse cols
   group_by(case, brief, id, fem_brief, text) %>% 
   mutate(label = paste0(label, collapse = ", ")) %>% 
-  unique()
+  unique() %>% 
+  mutate(manu_label = 1)
 ```
 
 # Combine
