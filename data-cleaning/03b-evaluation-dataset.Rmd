@@ -120,7 +120,8 @@ manu_label <- manu_label %>%
 # Combine
 
 ```{r}
-final_label <- rbind(auto_label, manu_label)
+final_label <- rbind(auto_label, manu_label) %>% 
+  rename(labels = label)
 final_label %>% nrow()
 ```
 
