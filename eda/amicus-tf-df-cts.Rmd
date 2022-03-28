@@ -1,0 +1,78 @@
+---
+title: "corpus stop words"
+author: "Amanda Konet"
+date: "`r date()`"
+output:
+  #html_document:
+  #  df_print: paged
+  pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, error = F, message = F, warning = F)
+# data cleaning + viz
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+# text processing for wrd cts
+library(tidytext)
+library(textdata)
+library(quanteda)
+# word cloud
+library(tm)
+library(wordcloud)
+library(RColorBrewer)
+# ngram graph
+library(igraph)
+library(ggraph)
+# data
+library(boxr)
+box_auth()
+# print df
+library(kableExtra)
+# reassign pipe
+`%>%` <- magrittr::`%>%`
+# decisions data
+amicus <- box_read("937207017356", read_fun = readr::read_csv)
+```
+
+
+
+# Overview
+
+What are the most common words in the briefs? This will reveal noise.
+
+First, get tokens
+
+```{r}
+amicus_words <- amicus %>%
+  select(brief, text) %>%
+  unnest_tokens(word, text) %>% 
+  anti_join(stop_words) %>% 
+  filter(!grepl("[0-9]", word))
+```
+
+Word count and document count 
+
+```{r}
+word_ct <- amicus_words %>% 
+  count(word, sort = T) %>% 
+  rename(freq = n)
+
+doc_ct <- amicus_words %>% 
+  group_by(word) %>% 
+  mutate(ct = n()) %>% 
+  arrange(-ct) %>% 
+  distinct(brief, word) %>% 
+  group_by(word) %>% 
+  summarize(doc_ct = n()) %>% 
+  arrange(-doc_ct)
+```
+
+
+Join 
+
+```{r}
+df <- word_ct %>% left_join(doc_ct, by = "word")
+```
+
