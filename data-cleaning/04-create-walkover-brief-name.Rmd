@@ -1,0 +1,89 @@
+---
+title: "Create Walkover of Brief Names"
+author: "Sarah Torrence"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T, warning = F, message = F, error = F)
+
+# Box access
+library(boxr)
+box_auth()
+
+# data manip
+library(tidyverse)
+library(fuzzyjoin)
+
+# data
+# regressions/data for Amicus IV regressions/Amicus Author Organization Categorization
+brief_info <- box_read("936715223606")
+
+# data/processed amicus files/amicus_text_512.csv
+amicus <- box_read("937207017356")
+```
+
+```{r}
+brief_names <- brief_info %>% filter(`Row Type...9` == "Amicus Brief") %>% 
+              select(`Amicus Brief`) %>% unique()
+
+briefs_to_match <- amicus %>% select(brief) %>% unique()
+```
+
+Currently none of the names of briefs match between these two files. 
+
+```{r}
+intersect(brief_names[["Amicus Brief"]], briefs_to_match[["brief"]])
+```
+
+It looks like the brief names in the file with text for topic modeling are a combination of case names and brief names. I want to remove the case portion and see if they match better with the brief names in the author information data.
+
+1. Make everything lower case
+2. Replace all v. with v
+3. Remove .docx
+4. Remove all text at beginning of string with `text v text. ` or `text v text - `
+5. Remove `%2c`
+6. Remove all punctuation and spacing
+
+```{r}
+#1
+briefs_to_match$clean_names <- tolower(briefs_to_match$brief)
+brief_names$clean_names <- tolower(brief_names$`Amicus Brief`)
+
+#2
+briefs_to_match$clean_names <- str_replace(briefs_to_match$clean_names, 'v\\.', 'v')
+
+#3
+briefs_to_match$clean_names <- str_replace(briefs_to_match$clean_names, '\\.docx', '')
+
+#4
+briefs_to_match$clean_names <- str_replace(briefs_to_match$clean_names, '([^v]*v[^\\.]*\\. )|([^v]*v[^-]*- )', '')
+
+#5
+briefs_to_match$clean_names <- str_replace(briefs_to_match$clean_names, '%2c', '')
+
+#6
+briefs_to_match$clean_names <- str_replace_all(briefs_to_match$clean_names,
+                                               '[^[:alnum:]]','')
+brief_names$clean_names <- str_replace_all(brief_names$clean_names,
+                                               '[^[:alnum:]]','')
+```
+
+Sorting by brief name.
+
+```{r}
+brief_names <- brief_names[order(brief_names$clean_names),]
+briefs_to_match <- briefs_to_match[order(briefs_to_match$clean_names),]
+```
+
+After all of the cleaning I was only able to match 268 brief names.
+
+```{r}
+join <- brief_names %>% left_join(briefs_to_match, by = c("clean_names"))
+
+table(is.na(join$brief))
+```
+
+
+
