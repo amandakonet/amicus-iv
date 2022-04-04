@@ -1,0 +1,74 @@
+---
+title: "Top 10 Words by Frame"
+author: "Sarah Torrence"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T, warning = F, message = F, error = F)
+
+# Box access
+library(boxr)
+box_auth()
+
+# data manip
+library(tidyverse)
+
+# data
+# data/labeled amicus/amicus_label_density/framing_dictionary.csv
+frame_dict <- box_read("914901620274")
+
+# data/processed amicus files/amicus_text_512.csv
+amicus <- box_read("937207017356")
+```
+
+The purpose of this file is to find the top 10 most common words for each frame list below.
+
+```{r}
+search_terms <- c("abortionNegativeII", "actor_couple", "actor_fetus", "actor_physician", "compulsoryII", "compulsoryMotherhood", "evidence experts II", "evidence_uncertainty", "evidence_med_authority", "evidence_research", "evidence_reveal", "evidence_uncertainty", "favorChildbirth", "health", "intersectionality", "law_undueBurdenII", "law_womanRights", "morality", "psy_harm", "womanCitizenship")
+
+frame_dict <- frame_dict %>% filter(code %in% search_terms)
+```
+
+Here I iterate through all the words in the frame dictionary and count the number of times they show up in the corpus. I then add this count as a column to the frame dictionary.
+
+```{r}
+counts <- c()
+for (i in 1:nrow(frame_dict)){
+  count <- sum(str_count(amicus$text, frame_dict$word_cleaned[i]))
+  counts <- append(counts, count)
+}
+
+frame_dict <- cbind(frame_dict, counts)
+```
+
+Here I gather the top 10 most common words for a frame a put them in a dataframe.
+
+```{r}
+df <- data.frame(matrix(ncol = 2, nrow = 0))
+x <- c("frame", "word_cleaned")
+colnames(df) <- x
+
+
+for (term in search_terms){
+  top10 <- frame_dict %>% filter(code == term) %>% arrange(desc(counts)) %>% slice(1:10) %>% select(frame = code, word_cleaned)
+  df <- rbind(df, top10)
+}
+```
+
+Now I format the dataframe so that the most common words are in a list.
+
+```{r}
+df <- df %>% group_by(frame) %>% summarise(word_list = toString(word_cleaned))
+```
+
+Save as a csv.
+
+```{r}
+#box_write(df,
+#           file_name = "common-words-by-frame.csv",
+#           dir_id = 158755083103)
+```
+
+
