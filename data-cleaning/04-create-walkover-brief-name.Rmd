@@ -14,76 +14,121 @@ box_auth()
 
 # data manip
 library(tidyverse)
-library(fuzzyjoin)
+
+# parallel processing
+library(R.utils)
+library(doParallel)
 
 # data
-# regressions/data for Amicus IV regressions/Amicus Author Organization Categorization
+# regressions/data for Amicus IV regressions/Amicus Author Organization Categorization.xlsx
 brief_info <- box_read("936715223606")
 
 # data/processed amicus files/amicus_text_512.csv
 amicus <- box_read("937207017356")
+
+# data/author and amicus measures/amicus-level-measures.csv
+author_level <- box_read("861296487195")
+```
+
+Set the working directory for files to gets IDs for.
+
+```{r}
+box_setwd("99209523670")
 ```
 
 ```{r}
-brief_names <- brief_info %>% filter(`Row Type...9` == "Amicus Brief") %>% 
-              select(`Amicus Brief`) %>% unique()
+# Get the IDs of all the case folders 
+case_folders <- box_ls() %>%
+  as.data.frame() %>% 
+  filter(type == "folder") %>% 
+  rename(case = name)
 
-briefs_to_match <- amicus %>% select(brief) %>% unique()
+case_folders %>% head(1)
 ```
 
-Currently none of the names of briefs match between these two files. 
+For all of the folders, retrieve every file name and ID. 
 
 ```{r}
-intersect(brief_names[["Amicus Brief"]], briefs_to_match[["brief"]])
+# number of cores available
+n_cores <- detectCores() - 1
+registerDoParallel(n_cores)
+
+# given a df of ids for SC folder, extract names and ids of all files in case folder
+# then, save
+all_file_names <- function(case_folder_ids) {
+  
+  # get info for all files contained in each case folder
+  # stored in a list of lists
+  cases_ids_list <- mclapply(case_folder_ids$id,
+                                box_ls,
+                                mc.cores = n_cores)
+  
+  # convert to list of df
+  cases_ids_list <- map(cases_ids_list, as.data.frame)
+  
+  # get name of folder (this is case name)
+  cases_ids_list <- lapply(cases_ids_list, function(x) transform(x, case = sub(".*/", "", path)))
+  
+  print("Created list of dfs; each element is a case folder")
+  
+  # create iterator that will go through list element by element
+  it <- iter(cases_ids_list, by = "row")
+  
+  # in each case folder, grab the name and id of the decision file
+  file_ids <-
+    foreach(i = it,
+            .combine = rbind,
+            .inorder = F) %dopar% {
+              i %>%
+                filter(grepl("amicus|amici", name, ignore.case = T)) %>%
+                select(case, name, id)
+            }
+  print("Obtained amicus file ids")
+  
+  return(file_ids)
+}
+
+amicus_file_ids <- all_file_names(case_folders)
+
+doParallel::stopImplicitCluster()
 ```
 
-It looks like the brief names in the file with text for topic modeling are a combination of case names and brief names. I want to remove the case portion and see if they match better with the brief names in the author information data.
-
-1. Make everything lower case
-2. Replace all v. with v
-3. Remove .docx
-4. Remove all text at beginning of string with `text v text. ` or `text v text - `
-5. Remove `%2c`
-6. Remove all punctuation and spacing
+Join the different brief names into one dataframe.
 
 ```{r}
-#1
-briefs_to_match$clean_names <- tolower(briefs_to_match$brief)
-brief_names$clean_names <- tolower(brief_names$`Amicus Brief`)
+join_data <- author_level %>% select(id = BoxFileID, name_incorrect = AmicusBrief, CaseId)
+join_data$id <- as.character(join_data$id)
 
-#2
-briefs_to_match$clean_names <- str_replace(briefs_to_match$clean_names, 'v\\.', 'v')
+join_data2 <- amicus_file_ids %>% select(id, name_correct = name)
 
-#3
-briefs_to_match$clean_names <- str_replace(briefs_to_match$clean_names, '\\.docx', '')
-
-#4
-briefs_to_match$clean_names <- str_replace(briefs_to_match$clean_names, '([^v]*v[^\\.]*\\. )|([^v]*v[^-]*- )', '')
-
-#5
-briefs_to_match$clean_names <- str_replace(briefs_to_match$clean_names, '%2c', '')
-
-#6
-briefs_to_match$clean_names <- str_replace_all(briefs_to_match$clean_names,
-                                               '[^[:alnum:]]','')
-brief_names$clean_names <- str_replace_all(brief_names$clean_names,
-                                               '[^[:alnum:]]','')
+data <- left_join(join_data, join_data2, by = c("id"))
 ```
-
-Sorting by brief name.
 
 ```{r}
-brief_names <- brief_names[order(brief_names$clean_names),]
-briefs_to_match <- briefs_to_match[order(briefs_to_match$clean_names),]
+table(is.na(data$name_correct))
 ```
-
-After all of the cleaning I was only able to match 268 brief names.
 
 ```{r}
-join <- brief_names %>% left_join(briefs_to_match, by = c("clean_names"))
+data %>% filter(is.na(name_correct))
+```
 
-table(is.na(join$brief))
+```{r}
+data[data$id == 592236091833,'name_correct'] <- 'Stenberg v Carhart. Amics Brief for Petitioner by Agudath Israel of America.docx'
 ```
 
 
+```{r}
+check_in_amicus <- amicus %>% left_join(data, by = c('brief' = 'name_correct'))
+june_russo_fix <- check_in_amicus %>% filter(is.na(name_incorrect)) %>%
+  select(brief) %>% unique()
+```
+
+
+Write to csv
+
+```{r}
+box_write(data,
+           file_name = "walkover_brief_names.csv",
+           dir_id = 145990409196)
+```
 
