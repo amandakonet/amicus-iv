@@ -117,12 +117,56 @@ data[data$id == 592236091833,'name_correct'] <- 'Stenberg v Carhart. Amics Brief
 ```
 
 
+Add our updated brief id
+
 ```{r}
-check_in_amicus <- amicus %>% left_join(data, by = c('brief' = 'name_correct'))
-june_russo_fix <- check_in_amicus %>% filter(is.na(name_incorrect)) %>%
-  select(brief) %>% unique()
+amicus_current_ids <- amicus %>% select(brief, brief_id = id)
+final <- data %>% 
+  left_join(amicus_current_ids, c("name_correct" = "brief")) %>% 
+  select(new_id=brief_id, name_correct, name_incorrect, old_id = id)
+
+final %>% filter(is.na(new_id)) # this brief doesn't exist in our data ?
 ```
 
+
+## June v Russo
+
+
+Read in the June v Russo names from Holly's data file.
+
+```{r}
+jvr_incorrect <- box_read_excel("941695019313", sheet="final") 
+#jvr_incorrect %>% head()
+```
+
+Get the "correct" june v russo brief names
+
+```{r}
+jvr_correct <- amicus %>% filter(grepl("June", brief)) %>%
+  mutate(id = as.double(id)) %>% 
+  select(new_id=id,name_correct=brief)
+```
+
+
+Join the two 
+
+```{r}
+jvr <- jvr_correct %>% left_join(jvr_incorrect, c("new_id"="brief_id"))
+
+jvr <- jvr %>% 
+  mutate(old_id = 0) %>% 
+  select(new_id, name_correct, name_incorrect=amicus, old_id)
+```
+
+Add to final df
+
+```{r}
+final <- final %>% rbind(jvr) %>%
+  distinct(new_id, name_correct, name_incorrect, old_id)
+```
+
+
+## Save
 
 Write to csv
 
