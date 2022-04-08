@@ -45,24 +45,45 @@ brief_info <- brief_info %>% filter(`Row Type` == 'Amicus Brief') %>% select(Cas
               amicus_id, `Amicus Brief`, forgau, antauo, chcauf, lifauo, govauf,                     govauo, sg, racauf, racauo, medauf, medauo, mpeauf, mpeauo, legauf, 
                legauo, relauf, relauo, LGBauf, forgauf, aclauf, aclauo, sgauf, sgauo)
 
+# change june v russo to case id = 999999
+brief_info <- brief_info %>%
+  mutate(Case = ifelse(is.na(Case), "999999", Case))
+
 #impute all na with 0
 brief_info[is.na(brief_info)] = 0
 ```
 
+
+Join to amicus data
+
 ```{r}
-walkover$CaseId <-  as.character(walkover$CaseId)
+walkover$case_code <-  as.character(walkover$case_code)
 walk_measures <- walkover %>% left_join(brief_info, by = c("case_code" = "Case", "brief_code" = "amicus_id"))
 
 amicus <- amicus %>% left_join(walk_measures, by = c("id" = "new_id"))
 ```
 
-Save as a csv.
 
-**remove any unneeded columns here before saving**
+Remove unnecessary columns
 
 ```{r}
-box_write(amicus,
-           file_name = "amicus_text_512_measures.csv",
+final <- amicus %>% 
+  select(case, id, brief, brief_party, forgau:sgauo, text) %>% 
+  janitor::clean_names()
+```
+
+Check 
+
+```{r}
+final %>% head()
+```
+
+
+Save as a csv.
+
+```{r}
+box_write(final,
+           file_name = "amicus_text_clean_512_vars.csv",
            dir_id = 145990409196)
 ```
 
