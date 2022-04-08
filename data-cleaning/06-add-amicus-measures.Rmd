@@ -1,0 +1,68 @@
+---
+title: "Add Amicus Measures"
+author: "Sarah Torrence"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T, warning = F, message = F, error = F)
+
+# Box access
+library(boxr)
+box_auth()
+
+# data manip
+library(tidyverse)
+library(janitor)
+
+# data
+# regressions/data for Amicus IV regressions/Amicus Author Organization Categorization.xlsx
+brief_info <- box_read("936715223606")
+
+# data/processed amicus files/amicus_text_clean_512.csv
+amicus <- box_read("939714323391")
+
+# data/processed amicus files/walkover_brief_names.csv
+walkover <- box_read("941154488137")
+```
+
+We need to grab only the amicus brief information from the `brief_info`file, select the variables we care about and impute NAs with 0.
+
+Variable to select:
+
+forgau, antauo, chcauf, lifauo, govauf, govauo, sg, racauf, racauo, medauf, medauo, mpeauf, mpeauo, legauf, legauo, relauf, relauo, LGBauf, forgauf, aclauf, aclauo, sgauf, sgauo
+
+```{r}
+col_name <- names(brief_info)[1:12]
+brief_info <- brief_info %>%
+  row_to_names(row_number = 1)
+colnames(brief_info)[1:12] <- col_name
+colnames(brief_info)[177] <- 'emppf2'
+colnames(brief_info)[5] <- 'amicus_id'
+
+brief_info <- brief_info %>% filter(`Row Type` == 'Amicus Brief') %>% select(Case, 
+              amicus_id, `Amicus Brief`, forgau, antauo, chcauf, lifauo, govauf,                     govauo, sg, racauf, racauo, medauf, medauo, mpeauf, mpeauo, legauf, 
+               legauo, relauf, relauo, LGBauf, forgauf, aclauf, aclauo, sgauf, sgauo)
+
+#impute all na with 0
+brief_info[is.na(brief_info)] = 0
+```
+
+```{r}
+walkover$CaseId <-  as.character(walkover$CaseId)
+walk_measures <- walkover %>% left_join(brief_info, by = c("case_code" = "Case", "brief_code" = "amicus_id"))
+
+amicus <- amicus %>% left_join(walk_measures, by = c("id" = "new_id"))
+```
+
+Save as a csv.
+
+**remove any unneeded columns here before saving**
+
+```{r}
+box_write(amicus,
+           file_name = "amicus_text_512_measures.csv",
+           dir_id = 145990409196)
+```
+
