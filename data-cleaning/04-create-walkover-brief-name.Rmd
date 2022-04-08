@@ -96,7 +96,10 @@ doParallel::stopImplicitCluster()
 Join the different brief names into one dataframe.
 
 ```{r}
-join_data <- author_level %>% select(id = BoxFileID, name_incorrect = AmicusBrief, CaseId)
+# select id's from author data
+join_data <- author_level %>%
+  select(id = BoxFileID, name_incorrect = AmicusBrief, CaseId, AmBriefID)
+
 join_data$id <- as.character(join_data$id)
 
 join_data2 <- amicus_file_ids %>% select(id, name_correct = name)
@@ -123,9 +126,11 @@ Add our updated brief id
 amicus_current_ids <- amicus %>% select(brief, brief_id = id)
 final <- data %>% 
   left_join(amicus_current_ids, c("name_correct" = "brief")) %>% 
-  select(new_id=brief_id, name_correct, name_incorrect, old_id = id)
+  select(new_id=brief_id, case_code = CaseId, brief_code = AmBriefID,
+         name_correct, name_incorrect, old_id = id)
 
 final %>% filter(is.na(new_id)) # this brief doesn't exist in our data ?
+final %>% head()
 ```
 
 
@@ -135,15 +140,16 @@ final %>% filter(is.na(new_id)) # this brief doesn't exist in our data ?
 Read in the June v Russo names from Holly's data file.
 
 ```{r}
-jvr_incorrect <- box_read_excel("941695019313", sheet="final") 
-#jvr_incorrect %>% head()
+jvr_incorrect <- box_read_excel("941695019313", sheet="final") %>% 
+  mutate(brief_id = as.character(brief_id))
+jvr_incorrect %>% head()
 ```
 
 Get the "correct" june v russo brief names
 
 ```{r}
 jvr_correct <- amicus %>% filter(grepl("June", brief)) %>%
-  mutate(id = as.double(id)) %>% 
+  mutate(id = as.character(id)) %>% 
   select(new_id=id,name_correct=brief)
 ```
 
@@ -154,15 +160,22 @@ Join the two
 jvr <- jvr_correct %>% left_join(jvr_incorrect, c("new_id"="brief_id"))
 
 jvr <- jvr %>% 
-  mutate(old_id = 0) %>% 
-  select(new_id, name_correct, name_incorrect=amicus, old_id)
+  mutate(old_id = 0,
+         case_code = 999999) %>% 
+  select(new_id, case_code, brief_code, name_correct, name_incorrect=amicus, old_id)
 ```
 
 Add to final df
 
 ```{r}
 final <- final %>% rbind(jvr) %>%
-  distinct(new_id, name_correct, name_incorrect, old_id)
+  distinct(new_id, case_code, brief_code, name_correct, name_incorrect, old_id)
+```
+
+Check 
+
+```{r}
+final %>% nrow()
 ```
 
 
@@ -171,7 +184,7 @@ final <- final %>% rbind(jvr) %>%
 Write to csv
 
 ```{r}
-box_write(data,
+box_write(final,
            file_name = "walkover_brief_names.csv",
            dir_id = 145990409196)
 ```
