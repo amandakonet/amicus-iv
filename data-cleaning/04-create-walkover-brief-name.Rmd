@@ -23,8 +23,8 @@ library(doParallel)
 # regressions/data for Amicus IV regressions/Amicus Author Organization Categorization.xlsx
 brief_info <- box_read("936715223606")
 
-# data/processed amicus files/amicus_text_512.csv
-amicus <- box_read("937207017356")
+# data/processed amicus files/amicus_clean_512_no_stride.csv
+amicus <- box_read("942789542605")
 
 # data/author and amicus measures/amicus-level-measures.csv
 author_level <- box_read("861296487195")
@@ -172,11 +172,26 @@ final <- final %>% rbind(jvr) %>%
   distinct(new_id, case_code, brief_code, name_correct, name_incorrect, old_id)
 ```
 
-Check 
+
+Add missing case
 
 ```{r}
-final %>% nrow()
+missing <- data.frame(new_id = 861822082999, case_code = 100,
+           brief_code = 31,
+           name_correct = "Planned Parenthood of Southeastern Pennsylvania v Casey. Amici Brief for Petitioners (feminist), by Pennsylvania Coalition against Domestic Violence & others - pared.DOCX",
+           name_incorrect = "Amicus Brief for Petitioners (feminist), by |Pennsylvania Coalition Against Domestic Violence & others",
+           old_id = 000000)
+
+final <- final %>% rbind(missing)
 ```
+
+
+Check
+
+```{r}
+final %>% distinct(new_id) %>% nrow()
+```
+
 
 
 ## Save
@@ -188,4 +203,6 @@ box_write(final,
            file_name = "walkover_brief_names.csv",
            dir_id = 145990409196)
 ```
+
+
 

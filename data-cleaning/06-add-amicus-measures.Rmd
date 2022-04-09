@@ -20,8 +20,8 @@ library(janitor)
 # regressions/data for Amicus IV regressions/Amicus Author Organization Categorization.xlsx
 brief_info <- box_read("936715223606")
 
-# data/processed amicus files/amicus_text_clean_512.csv
-amicus <- box_read("939714323391")
+# data/processed amicus files/amicus_clean_512_no_stride.csv
+amicus <- box_read("942789542605")
 
 # data/processed amicus files/walkover_brief_names.csv
 walkover <- box_read("941154488137")
@@ -32,6 +32,7 @@ We need to grab only the amicus brief information from the `brief_info`file, sel
 Variable to select:
 
 forgau, antauo, chcauf, lifauo, govauf, govauo, sg, racauf, racauo, medauf, medauo, mpeauf, mpeauo, legauf, legauo, relauf, relauo, LGBauf, forgauf, aclauf, aclauo, sgauf, sgauo
+
 
 ```{r}
 col_name <- names(brief_info)[1:12]
@@ -54,11 +55,13 @@ brief_info[is.na(brief_info)] = 0
 ```
 
 
+
 Join to amicus data
 
 ```{r}
 walkover$case_code <-  as.character(walkover$case_code)
-walk_measures <- walkover %>% left_join(brief_info, by = c("case_code" = "Case", "brief_code" = "amicus_id"))
+walk_measures <- walkover %>%
+  left_join(brief_info, by = c("case_code" = "Case", "brief_code" = "amicus_id"))
 
 amicus <- amicus %>% left_join(walk_measures, by = c("id" = "new_id"))
 ```
@@ -77,13 +80,26 @@ Check
 ```{r}
 final %>% head()
 ```
+Ensure no NAs
+
+```{r}
+final %>% select_if(function(x) any(is.na(x))) %>% 
+  summarise_each(funs(sum(is.na(.))))
+```
+
+Missing this brief. I don't see it in Holly's data? 
+
+```{r}
+amicus %>% filter(id == 861822406799) %>% distinct(brief) %>% pull(brief)
+```
+
 
 
 Save as a csv.
 
 ```{r}
 box_write(final,
-           file_name = "amicus_text_clean_512_vars.csv",
+           file_name = "amicus_clean_512_no_stride_vars.csv",
            dir_id = 145990409196)
 ```
 
