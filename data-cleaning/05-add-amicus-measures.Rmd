@@ -27,6 +27,7 @@ amicus <- box_read("942789542605")
 walkover <- box_read("941154488137")
 ```
 
+
 We need to grab only the amicus brief information from the `brief_info`file, select the variables we care about and impute NAs with 0.
 
 Variable to select:
@@ -55,7 +56,6 @@ brief_info[is.na(brief_info)] = 0
 ```
 
 
-
 Join to amicus data
 
 ```{r}
@@ -75,6 +75,7 @@ final <- amicus %>%
   janitor::clean_names()
 ```
 
+
 Check 
 
 ```{r}
@@ -86,13 +87,6 @@ Ensure no NAs
 final %>% select_if(function(x) any(is.na(x))) %>% 
   summarise_each(funs(sum(is.na(.))))
 ```
-
-Missing this brief. I don't see it in Holly's data? 
-
-```{r}
-amicus %>% filter(id == 861822406799) %>% distinct(brief) %>% pull(brief)
-```
-
 
 
 Save as a csv.
