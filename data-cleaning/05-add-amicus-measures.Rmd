@@ -44,8 +44,9 @@ colnames(brief_info)[177] <- 'emppf2'
 colnames(brief_info)[5] <- 'amicus_id'
 
 brief_info <- brief_info %>% filter(`Row Type` == 'Amicus Brief') %>% select(Case, 
-              amicus_id, `Amicus Brief`, forgau, antauo, chcauf, lifauo, govauf,                     govauo, sg, racauf, racauo, medauf, medauo, mpeauf, mpeauo, legauf, 
-               legauo, relauf, relauo, LGBauf, forgauf, aclauf, aclauo, sgauf, sgauo)
+              amicus_id, `Amicus Brief`, forgau, antauo, chcauf, lifauo, govauf,
+              govauo, sg, racauf, racauo, medauf, medauo, mpeauf, mpeauo, legauf, 
+              legauo, relauf, relauo, LGBauf, forgauf, aclauf, aclauo, sgauf, sgauo)
 
 # change june v russo to case id = 999999
 brief_info <- brief_info %>%
