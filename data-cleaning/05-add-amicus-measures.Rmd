@@ -21,11 +21,16 @@ library(janitor)
 brief_info <- box_read("936715223606")
 
 # data/processed amicus files/amicus_clean_512_no_stride.csv
-amicus <- box_read("942789542605")
+amicus_party <- box_read("942789542605") %>% select(id, brief_party) %>% distinct(id, brief_party)
+# data/processed_amicus_files/amicus_clean_512_no_stride_split.csv
+#amicus <- box_read("946701865033")
+# data/processed_amicus_files/shortened_amicus_brief_text.csv
+amicus <- box_read("910635411098")
 
 # data/processed amicus files/walkover_brief_names.csv
 walkover <- box_read("941154488137")
 ```
+
 
 
 We need to grab only the amicus brief information from the `brief_info`file, select the variables we care about and impute NAs with 0.
@@ -67,12 +72,18 @@ walk_measures <- walkover %>%
 amicus <- amicus %>% left_join(walk_measures, by = c("id" = "new_id"))
 ```
 
+If using shortened text file, add in brief_party 
+
+```{r}
+amicus <- amicus %>% left_join(., amicus_party, by = "id")
+```
+
 
 Remove unnecessary columns
 
 ```{r}
 final <- amicus %>% 
-  select(case, id, brief, brief_party, forgau:sgauo, text) %>% 
+  select(case, id, brief, brief_party, forgau:sgauo, text = txt_short) %>% 
   janitor::clean_names()
 ```
 
@@ -94,7 +105,7 @@ Save as a csv.
 
 ```{r}
 box_write(final,
-           file_name = "amicus_clean_512_no_stride_vars.csv",
+           file_name = "shortened-amicus-text-vars.csv",
            dir_id = 145990409196)
 ```
 
