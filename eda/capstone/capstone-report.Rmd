@@ -1,0 +1,299 @@
+---
+title: "Capstone Graphs"
+author: "Amanda Konet"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T, warning = F, message = F, error = F)
+
+# Box access
+library(boxr)
+box_auth()
+
+# data manip
+library(tidyverse)
+library(janitor)
+
+# plotting
+library(ggplot2)
+library(ggpubr)
+
+# data
+amicus <- box_read("942861514695")
+
+# brief info + clean 
+brief_info <- box_read("936715223606")
+
+col_name <- names(brief_info)[1:12]
+brief_info <- brief_info %>%
+  row_to_names(row_number = 1)
+colnames(brief_info)[1:12] <- col_name
+colnames(brief_info)[177] <- 'emppf2'
+colnames(brief_info)[5] <- 'amicus_id'
+
+brief_info <- brief_info %>% filter(`Row Type` == 'Amicus Brief') %>% select(Case, 
+              amicus_id, `Amicus Brief`, forgau, antauo, chcauf, lifauo, govauf,
+              govauo, sg, racauf, racauo, medauf, medauo, mpeauf, mpeauo, legauf, 
+              legauo, relauf, relauo, LGBauf, forgauf, aclauf, aclauo, sgauf, sgauo)
+
+# change june v russo to case id = 999999
+brief_info <- brief_info %>%
+  mutate(Case = ifelse(is.na(Case), "999999", Case))
+
+#impute all na with 0
+brief_info[is.na(brief_info)] = 0
+
+medauo <- readr::read_csv("~/Documents/Vanderbilt/SP_22/capstone/medauo_topics_clean_labels_bbu_rramicus.csv",
+                          col_types = cols(X1 = col_skip()))
+
+medauf <- readr::read_csv("~/Documents/Vanderbilt/SP_22/capstone/medauf_topics_clean_labels_bbu_rramicus.csv",
+           col_types = cols(X1 = col_skip()))
+```
+
+# Capstone Graphics
+
+
+# Amicus author type counts
+
+```{r}
+amicus %>% distinct(id, brief_party) %>% group_by(brief_party) %>% summarize(n=n())
+```
+
+
+
+```{r}
+brief_info %>% select(forgau:sgauo) %>%
+  mutate(across(where(is.character), as.numeric)) %>% 
+  summarise(across(where(is.numeric), ~ sum(.x, na.rm = TRUE))) %>% 
+  pivot_longer(., cols = c(forgau:sgauo), names_to = "var", values_to = "ct") %>% 
+  arrange(var)
+```
+
+
+
+# MLM fine-tuning
+
+Side-by-side, one for BERT & one for legalBERT
+
+BERT
+
+```{r}
+bert <- data.frame(
+  epoch = c(1:10),
+  train_loss = c(2.0341, 1.7881, 1.6970, 1.6328, 1.5919, 1.5602, 1.5221, 1.5135, 1.4917, 1.4859),
+  val_loss = c(1.7515, 1.6616, 1.6061, 1.5662, 1.5362, 1.5193, 1.4984, 1.4988, 1.4755, 1.4671)
+)
+bert <- bert %>% mutate(train_perp = exp(train_loss), val_perp = exp(val_loss))
+```
+
+legalBERT
+
+```{r}
+legalbert <- data.frame(
+  epoch = c(1:10),
+  train_loss = c(1.021, 1.2272, 1.2467, 1.2149, 1.1855, 1.1674, 1.1508, 1.1386, 1.129, 1.1193),
+  val_loss = c(1.3393, 1.2612, 1.2403, 1.2276, 1.2101, 1.2020, 1.893, 1.1870, 1.1794, 1.1759)
+)
+legalbert <- legalbert %>% 
+  mutate(train_perp = exp(train_loss), val_perp = exp(val_loss))
+#legalbert
+```
+Plot 
+
+```{r}
+colors_line <- c("Train" = "#DC277F", "Validation" = "#658FFF")
+
+bert_train <- bert %>% 
+  ggplot(.,aes(x = epoch)) +
+  geom_line(aes(y = train_perp, color = "Train")) +
+  geom_point(aes(y = train_perp), color = "#DC277F", alpha = 0.8) + 
+  geom_line(aes(y = val_perp, color = "Validation")) +
+  geom_point(aes(y = val_perp), color = "#658FFF", alpha = 0.8) +
+  scale_color_manual(values = colors_line) +
+  coord_cartesian(ylim = c(0,8), xlim=c(1,10)) +
+  scale_y_continuous(breaks = seq(0, 8, by = 1)) +
+  scale_x_continuous(breaks = seq(1, 10, by = 1)) +
+  labs(
+    x = "Epoch",
+    y = "Perplexity",
+    color = "Dataset",
+    title = "BERT MLM Fine-Tuning"
+  ) +
+  theme_minimal()
+
+bert_train
+```
+
+
+```{r}
+lb_train <- legalbert %>%
+  ggplot(.,aes(x = epoch)) +
+  geom_line(aes(y = train_perp, color = "Train")) +
+  geom_point(aes(y = train_perp), color = "#DC277F", alpha = 0.8) + 
+  geom_line(aes(y = val_perp, color = "Validation")) +
+  geom_point(aes(y = val_perp), color = "#658FFF", alpha = 0.8) +
+  scale_color_manual(values = colors_line) +
+  coord_cartesian(ylim = c(0,8), xlim=c(1,10)) +
+  scale_y_continuous(breaks = seq(0, 8, by = 1)) +
+  scale_x_continuous(breaks = seq(1, 10, by = 1)) +
+  labs(
+    x = "Epoch",
+    y = "Loss",
+    color = "Loss Type",
+    title = "Legal-BERT MLM Fine-Tuning"
+  ) +
+  theme_minimal() #+
+  #theme(panel.grid.minor.x = element_blank())
+
+lb_train
+```
+
+Together
+
+```{r}
+trains <- ggarrange(bert_train, lb_train, ncol=2, nrow=1, common.legend = TRUE, legend="bottom")
+ggsave(filename = "training_results.png", trains, width = 8, height=3)
+```
+
+
+# Topic Modeling Results
+
+## Medauo
+
+new label
+1 = fetus viability
+2 = abortion ending human life 
+3 = public funds not for abortion
+4 = fetus having right to life, autonomy, personhood
+5 = women's health / mortality from abortion
+
+```{r}
+medauo %>% 
+```
+Orig
+
+```{r, fig.width=8px, fig.height=1px}
+medauo_orig <- medauo %>% 
+  ggplot(., aes(x=x, y=y, color=as.factor(label), size=Count)) +
+  geom_point(alpha=0.6) +
+  theme_minimal() +
+  guides(size = "none") +
+  labs(
+    x = "Dimension 2", y = "Dimension 1",
+    title = "Original Medical Org Arguments (opp)",
+    color = "Label"
+  )
+ggsave("medauo_orig.png",medauo_orig,height = 4, width = 4)
+getwd()
+```
+
+Adjusted
+
+```{r}
+medauo <- medauo %>% 
+  mutate(label_correct = case_when(
+    label == 1 ~ "Abortion Ends Human Life",#2,
+    label == 3 & (topic_id %in% c(11,28)) ~ "Public Funds",#3,
+    label == 3 & !(topic_id %in% c(11,28)) ~ "Fetus Personhood",#4,
+    label == 4 & (topic_id %in% c(2,6)) ~ "Fetus Viability",#1,
+    label == 5 ~ "Abortion Harms Health",#5,
+    T ~ "none"
+  ))
+```
+
+```{r}
+medauo %>% filter(label_correct == "Abortion Ends Human Life")
+```
+
+
+```{r}
+medauo_adj <- medauo %>% 
+  filter(label_correct != "none") %>% 
+  ggplot(., aes(x=x, y=y, color=as.factor(label_correct), size=Count)) +
+  geom_point(alpha=0.6) +
+  theme_minimal() +
+  guides(size = "none") +
+  labs(
+    x = "Dimension 2", y = "Dimension 1",
+    title = "Adjusted Medical Org Arguments (opp)",
+    color = "Argument"
+  )
+ggsave("medauo_adj.png",medauo_adj,height = 4, width = 6)
+medauo_adj
+```
+
+
+```{r}
+medauo_graphs <- ggarrange(medauo_orig, medauo_adj, ncol=2, nrow=1, common.legend = FALSE)
+ggsave(filename = "medauo_results.png", medauo_graphs, width = 6, height=3)
+medauo_graphs
+```
+
+
+## Medauf
+
+```{r}
+medauf %>% 
+  #filter(label %in% c(4, 8,9)) %>% 
+  ggplot(., aes(x=x, y=y, color=as.factor(label), size=Count)) +
+  geom_point(alpha=0.6) +
+  theme_minimal() +
+  guides(size = "none")
+```
+
+new labels
+
+removing: 2, 7
+
+1. public funding (medicaid); 13,17, 35, 38, 22; orig -1, 0
+2. violence against abortion seekers; orig 1, 11
+3. minor's rights; 9, 51, 58, 59; orig 4, 8 (notifying parents as bad, counseling, risks to teenage pregnancies)
+4. Physician's admitting privileges; orig 5
+5. health of abortion-seekers; orig 6, 12
+6. abortion & contraceptives access (orig 9)
+
+
+```{r}
+medauf <- medauf %>% 
+  mutate(label_correct = case_when(
+    label %in% c(-1, 0) ~ "Support Public Funding (Medicaid)",
+    label %in% c(1,11) ~ "Violence Against Abortion Seekers",
+    label %in% c(4,8) & !(topic_id %in% c(1,25)) ~ "Minor's Rights",
+    label == 5 ~ "Physicians Admitting Privileges",
+    label %in% c(6, 12) ~ "Health of Abortion-Seekers",
+    label == 9 ~ "Abortion/Contraceptives Access",
+    T ~ "none"
+  ))
+```
+
+
+New graph
+
+```{r}
+medauf_adj <- medauf %>% 
+  filter(label_correct != "none") %>% 
+  ggplot(., aes(x=x, y=y, color=as.factor(label_correct), size=Count)) +
+  geom_point(alpha=0.6) +
+  theme_minimal() +
+  guides(size = "none") +
+  labs(
+    x = "Dimension 2", y = "Dimension 1",
+    title = "Adjusted Medical Org Arguments (pro)",
+    color = "Argument"
+  )
+medauf_adj
+```
+
+```{r}
+ggsave("medauf_adj.png",medauf_adj,height = 4, width = 6)
+```
+
+
+```{r}
+medauf %>% filter(label_correct == "Health of Abortion-Seekers")
+```
+
+
+
