@@ -37,6 +37,7 @@ amicus <- box_read("946743626631", read_fun = readr::read_csv)
 Frame terms
 
 ```{r}
+# data/amicus content - frames
 frames <- box_read("947237361645")
 ```
 
@@ -136,6 +137,12 @@ clean_text <- function(df) {
   # Possessive words - remove 's
   df$text_clean <- sapply(df$text_clean, function(x) gsub("'s", " ", x))
   
+  # Replace hyphen with space
+  df$text_clean <- sapply(df$text_clean, function(x) gsub("-", " ", x))
+  
+  # Remove all other punctuation
+  df$text_clean <- sapply(df$text_clean, function(x) gsub("[^[:alpha:][:space:]]", " ", x))
+  
   # Add space between digits & letters
   df$text_clean <- sapply(df$text_clean, function(x)
     gsub("([[:alpha:]])([[:digit:]])", "\\1 \\2", x))
@@ -172,4 +179,147 @@ Save
 
 
 # Frame Terms Cleaning
+
+1. One row per word/phrase
+
+Currently, data is one row per frame. Expand df on comma
+
+```{r}
+frames <- frames %>% separate_rows(., word_list, sep = ",") %>% 
+  mutate(frame_code = gsub(" ", "_", frame)) %>% 
+  select(frame, frame_code, word = word_list) %>% 
+  arrange(frame_code)
+
+frames %>% head()
+```
+
+2. Fix characters 
+
+```{r}
+frames <- frames %>% mutate(word_clean = fix_chars(word))
+```
+
+
+3. Clean text & lowercase
+
+```{r}
+# The clean_text function
+clean_text_frames <- function(x) {
+  
+  # Replace contractions 
+  x <- replace_contraction(x, sent.cap = FALSE)
+  
+  # Posessive words - remove 's
+  x <- gsub("'s", " ", x)
+  
+  # Replace hyphen with space
+  x <- gsub("-", " ", x)
+  
+  # Remove stop words
+  x <- removeWords(x, words = stops)
+  
+  # Strip white space
+  x <- replace_white(x)
+  
+  x <- trimws(x)
+  
+  x <- str_to_lower(x)
+  
+  return(x)
+}
+
+frames <- frames %>% mutate(word_clean = clean_text_frames(word_clean))
+```
+
+4. Fix instances where multiple phrases can come from one. Ex: "physician(s)" should be physician and physicians
+
+Create two columns 
+* tense: if a phrase includes () (example: "physician(s))
+* mulit: if there are multiple tenses
+* slash: if contains / (ex: "wome/an")
+
+There are only cases with parens. No multi or slash
+
+```{r}
+frames <- frames %>%
+  mutate(tense = ifelse(grepl("\\(|\\/", word_clean), word_clean, ""),
+         multi = ifelse(grepl("\\)\\(", word_clean), TRUE, FALSE),
+         slash = ifelse(grepl("\\/", word_clean), TRUE, FALSE)
+  )
+
+frames %>% filter(tense != "") %>% nrow()
+frames %>% filter(multi) %>% nrow()
+frames %>% filter(slash) %>% nrow()
+```
+
+Remove multi & slash
+
+```{r}
+frames <- frames %>% select(-multi, -slash)
+```
+
+
+If we have a phrase like "actually further(ed) government interest", this code chunk sets the value of `tense_1` to "actually furthered government interest" and `tense_2` to "actually further government interest."
+
+```{r}
+frames <- frames %>%
+  mutate(tense_1 = ifelse(tense != "", gsub("\\(|\\)", "", word_clean), ""), 
+         tense_2 = ifelse(tense != "", gsub("\\([a-z]+\\)", "", tense), ""))  
+
+# fix two errors that will arise
+frames <- frames %>% 
+  mutate(tense_1 = str_replace(tense_1, "uncertaintyies", "uncertainties"),
+         tense_1 = str_replace(tense_1, "authorityies", "authorities"))
+```
+
+
+Re-apply processing on tense_1 & 2
+
+```{r}
+frames <- frames %>% mutate_at(vars(tense_1, tense_2), clean_text_frames)
+```
+
+
+Fix so one row per phrase
+
+```{r}
+frame_tense_1 <- frames %>% 
+  filter(tense != "") %>% 
+  select(frame, frame_code, word, word_clean=tense_1)
+
+frame_tense_2 <- frames %>% 
+  filter(tense != "") %>% 
+  select(frame, frame_code, word, word_clean=tense_2)
+
+frames <- frames %>% filter(tense == "") %>% select(frame, frame_code, word, word_clean)
+
+frames <- frames %>% rbind(frame_tense_1, frame_tense_2) %>% arrange(frame, word_clean)
+```
+
+
+Remove any remaining punctuation
+
+```{r}
+# Remove all other punctuation
+frames <- frames %>% mutate(word_clean = gsub("[^[:alpha:][:space:]]", " ", word_clean))
+```
+
+
+Check 
+
+```{r}
+frames <- frames %>% distinct(frame, frame_code, word, word_clean)
+```
+
+Save
+
+```{r}
+box_write(frames,
+           file_name = "clean-amicus-iv-frame-dictionary.csv",
+           dir_id = 161199725595)
+```
+
+
+
+
 
