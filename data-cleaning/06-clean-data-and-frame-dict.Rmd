@@ -1,0 +1,175 @@
+---
+title: "06-clean-data-and-frame-dict"
+author: "Amanda Konet"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T, warning = F, message = F, error = F)
+
+# data manip
+library(tidyverse)
+library(tidytext)
+library(textclean)
+library(tm)
+library(stringi)
+library(quanteda)
+
+# data
+library(boxr)
+box_auth()
+```
+
+# Purpose
+
+To clean the amicus text and the frame dictionary for searching.
+
+# Data
+
+Amicus Text
+
+```{r}
+# data/processed amicus files/shortened-amicus-text-vars.csv
+amicus <- box_read("946743626631", read_fun = readr::read_csv)
+```
+
+Frame terms
+
+```{r}
+frames <- box_read("947237361645")
+```
+
+
+# Amicus Text Cleaning
+
+Note: text is already lowercased!
+
+1. Fix characters
+
+```{r}
+fix_chars <- function(x) {
+  
+  x <- gsub('â€¦', " ", x) # ellipses
+  x <- gsub('â€“', "-", x) # long hyphen
+  x <- gsub('â€™', "'", x) # curly apostrophe
+  x <- gsub('â€œ', " ", x) # curly open quote
+  x <- gsub('â€\\\u009d', " ", x) # curly closed quote
+  x <- replace_white(x) # replace instances of multiple white spaces in a row
+  x <- replace_curly_quote(x)
+  x <- replace_non_ascii(x)
+  
+  return(x)
+}
+
+# call on text
+amicus <- amicus %>% mutate(text_clean = fix_chars(text))
+```
+
+
+2. Remove URLs
+
+
+```{r}
+amicus <- amicus %>%
+  mutate(text_clean = qdapRegex::rm_url(text_clean))
+```
+
+
+
+3. Replace Proper Names
+
+```{r}
+# proper names df
+proper_names <- box_read("608071334097", read_fun = readr::read_csv) %>% 
+  mutate(word = str_to_lower(word))
+
+amicus <- amicus %>% as.data.frame()
+
+# Replace spaces in proper names with underscores
+amicus <- DataCombine::FindReplace(data = amicus, Var = "text_clean", 
+                         replaceData = proper_names, 
+                         from = "word", to = "replacement", exact = FALSE)
+```
+
+
+4. Remove instances of specific words and phrases
+
+
+First, "the fact that" and "in fact"
+
+```{r}
+amicus <- amicus %>% mutate(text_clean = gsub("the fact that|in fact", "", text_clean))
+```
+
+Then, some instances of "fact" and "reports"
+
+```{r}
+amicus <- amicus %>%
+  mutate(
+    text_clean = case_when(
+      case == "City of Akron v Akron Center" ~ 
+        gsub(pattern = "fact |facts ", replacement = "", x = text_clean, ignore.case = T),
+      case %in% c("PP v Ashcroft","Thornburgh v. American College of OBGYNs") ~
+        gsub(pattern = "report|reports|reporting|reported", replacement = "", x = text_clean, ignore.case = T),
+      TRUE ~ text_clean
+    )
+  )
+```
+
+5. Final tidying
+
+Includes replacing stopwords, trimming whitespace, removing contractions, etc.
+
+```{r}
+stops <- stopwords("en")
+
+clean_text <- function(df) {
+  
+  # Remove square brackets
+  df$text_clean <- sapply(df$text_clean, function(x) gsub("\\[", "", x))
+  df$text_clean <- sapply(df$text_clean, function(x) gsub("\\]", "", x))
+  
+  # Replace contractions 
+  df$text_clean <- sapply(df$text_clean, function(x) replace_contraction(x, sent.cap = FALSE))
+  
+  # Possessive words - remove 's
+  df$text_clean <- sapply(df$text_clean, function(x) gsub("'s", " ", x))
+  
+  # Add space between digits & letters
+  df$text_clean <- sapply(df$text_clean, function(x)
+    gsub("([[:alpha:]])([[:digit:]])", "\\1 \\2", x))
+  df$text_clean <- sapply(df$text_clean, function(x)
+    gsub("([[:digit:]])([[:alpha:]])", "\\1 \\2", x))
+  
+  # Remove stop words
+  df$text_clean <- sapply(df$text_clean, function(x) removeWords(x, words = stops))
+  
+  # Strip white space
+  df$text_clean <- sapply(df$text_clean, replace_white)
+  
+  return(df)
+  
+}
+
+amicus <- clean_text(amicus)
+```
+
+Ensure no NAs were created in this process:
+
+```{r}
+amicus %>% filter(is.na(text_clean))
+```
+
+
+Save
+
+```{r}
+#box_write(amicus,
+#           file_name = "clean-shortened-amicus-text-vars.csv",
+#           dir_id = 145990409196)
+```
+
+
+# Frame Terms Cleaning
+
