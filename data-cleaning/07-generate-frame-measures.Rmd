@@ -5,8 +5,6 @@ date: "`r Sys.Date()`"
 output: pdf_document
 ---
 
-9:15
-
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = T, warning = F, message = F, error = F)
@@ -46,10 +44,6 @@ amicus <- box_read("947307207905", read_fun = readr::read_csv)
 # Amicus-Level Measures
 
 Start by creating corpus 
-
-```{r}
-amicus %>% head(5) 
-```
 
 
 ```{r}
@@ -229,12 +223,17 @@ First, add in amicus type vars
 ```{r}
 sum_amicus <- amicus %>% select(case, id, forgau:sgauo) %>% 
   pivot_longer(., cols = c(forgau:sgauo), names_to = "author_type", values_to = "value") %>% 
+  filter(value == 1) %>% 
   left_join(., amicus_frames, by = "id") %>%
-  select(case, id, author_type, value, contains("freq")) %>% 
-  filter(value == 1)
+  select(case, id, author_type, value, contains("freq"))
 
 sum_amicus %>% head()
 ```
+```{r}
+sum_amicus %>% filter(case == "Anders v Floyd" | case == "Ayotte v. PP")
+```
+
+
 Then, sum up values by case, amicus type
 
 ```{r}
@@ -270,7 +269,6 @@ case_cts %>% head()
 case_frames <- sum_amicus %>% left_join(., case_cts, by = c("case", "author_type")) %>% 
   mutate(across(contains("freq"), ~.x/n))
 ```
-
 
 
 Save
