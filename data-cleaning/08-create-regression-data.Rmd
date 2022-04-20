@@ -1,0 +1,106 @@
+---
+title: "Create Regression Data"
+author: "Amanda Konet"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T, warning = F, message = F, error = F)
+
+library(tidyverse)
+library(boxr)
+box_auth()
+
+case_level <- box_read("947450386335")
+justice_level <- box_read("947810760828")
+```
+
+# Purpose
+
+To create regression data for Amicus IV. The dependent variable is justicevot. The controls are: justicemq, justicefem, nonftyp2, lcdisdirfem. The independent vars are the framing measures.
+
+
+# Refactor case-level data
+
+
+Currently, case_level has one row per frame per case. We want one row per case.
+
+```{r}
+case_level <- case_level %>% 
+  rename_with(.cols=contains("freq"), .fn=~sub("_freq.*", "", .x)) %>% 
+  pivot_wider(., c(case,author_type),
+              names_from = author_type,
+              values_from=c(abortion_different:womens_rights),
+              names_glue = "{author_type}_{.value}") %>% 
+  select(case, sort(colnames(.)))
+
+case_level %>% head(5)
+```
+
+# Select vars from justice-level file
+
+```{r}
+justice_level <- justice_level %>% 
+  select(case = casename, ddate2,
+         justiceid, justicevot, justicemq, justicefem,
+         nonftyp2, lcdisdirfem)
+
+justice_level %>% head(5)
+```
+
+# Merge
+
+First, clean up case names for easier matching. 
+
+```{r}
+justice_level <- justice_level %>% 
+  mutate(case = str_replace(case, 'v\\.', 'v'),
+         case = str_replace_all(case, "(,|’|'|\\)|\\()", ""),
+         case = case_when(
+           case == "Anders Solicitor of Richland County v Floyd" ~ "Anders v Floyd",
+           case == "Ayotte v Planned Parenthood of Northern New England" ~ "Ayotte v PP",
+           case == "City of Akron v Akron Center for Rep Health" ~ "City of Akron v Akron Center",
+           case == "Hill et al v Colorado" ~ "Hill v Colorado",
+           case == "Judy Madsen v Womens Health Center" ~ "Madsen v Womens Health Center",
+           case == "NOW v Joseph Scheidler 1994" ~ "NOW v Scheidler 1994",
+           case == "Ohio v Akron Center for Reproductive Health" ~ "Ohio v Akron Center",
+           case == "Planned Parenthood Assoc of Kansas City MO v Ashcroft Attorn Gen of MO" ~
+             "PP v Ashcroft",
+           case == "Planned Parenthood of Southeastern Pennsylvania v Casey" ~ "PP v Casey",
+           case == "Planned Parenthood of Central MO v Danforth" ~ "PP v Danforth",
+           case == "Joseph Scheidler v NOW 2003" ~ "Scheidler v NOW 2003",
+           case == "Joseph Scheidler v NOW 2006" ~ "Scheidler v Now 2006",
+           case == "Schenck et al v Pro-Choice Network of Western NY" ~
+             "Schenck v Pro-Choice Network",
+           case == "Thornburgh v American College of Obstetricians and Gynecologists LDEF" ~
+             "Thornburgh v American College of OBGYNs",
+           case == "Whole Womens Health v Hellerstedt" ~ "WWH v Hellerstedt",
+           T ~ case
+         ))
+
+case_level <- case_level %>% 
+  mutate(case = str_replace(case, 'v\\.', 'v'),
+        case = str_replace_all(case, "(,|’|'|\\)|\\()", ""))
+```
+
+
+
+Then, join & rearrange 
+
+```{r}
+final <- case_level %>% 
+  left_join(., justice_level, by = "case") %>% 
+  select(case, ddate2:lcdisdirfem, everything())
+```
+
+
+# Save
+
+```{r}
+box_write(final,
+          file_name = "amicus-iv-regression-data.xlsx",
+          dir_id = 158993526875)
+```
+
