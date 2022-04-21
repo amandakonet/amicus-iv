@@ -1,0 +1,88 @@
+---
+title: "Base Model"
+author: "Amanda Konet"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F)
+
+library(tidyverse)
+library(lme4)
+library(boxr)
+box_auth()
+```
+
+# Multilevel Modeling
+
+In this file, we use multilevel modeling to test whether frames articulated in amicus briefs have an effect on justice votes.
+
+# Data
+
+Filter out instances where we don't have the dependent variable, justicevot. Change data types where necessary. Fill in NAs for frame freq with 0s
+
+```{r}
+data <- box_read("947772227392") %>% 
+  filter(justicevot != "NA") %>% 
+  mutate(justicevot = as.numeric(justicevot),
+         justiceid = as.factor(justiceid),
+         justicefem = as.factor(justicefem),
+         nonftyp2 = as.factor(nonftyp2)) %>% 
+  mutate(across(c(aclauf_abortion_different:sgauo_womens_rights), ~replace_na(.x, 0)))
+```
+
+Add Case ID-- this will be the second level var
+
+```{r}
+case_ids <- data %>% distinct(case) %>% arrange(case) %>% mutate(id = 1:n())
+data <- case_ids %>% left_join(., data, by = "case")
+#data %>% head(1) %>% select(case:justicefem)
+```
+
+
+# Step 0: Calculate the Interclass Correlation Coefficient (ICC)
+
+ICC is the ratio of between-gropu variance to the total variance. This is the proportion of total variance in the outcome that is accounted for by the grouping. In this case, the groups are justices. This value should be ~ 0.3 or higher. If it's 0, that means no variation is accounted for by the justices and we shouldn't be doing MLM. 
+
+Because our outcome is binary (yes/no), we use glmer (generalized mixed model) and specify the binomial family. 
+
+```{r}
+resnull <- glmer(justicevot ~ (1|id)+1 ,family = "binomial", data = data)  
+summary(resnull)
+```
+We are good to proceed
+
+```{r}
+calc_ICC <-function(Model.Name) {
+  tau.Null<-as.numeric(lapply(summary(Model.Name)$varcor, diag))
+  sigma.Null <- as.numeric(attr(summary(Model.Name)$varcor, "sc")^2)
+  ICC.Null <- tau.Null/(tau.Null+sigma.Null)
+  return(ICC.Null)
+} 
+calc_ICC(resnull)
+```
+
+
+
+# Base Model
+
+(1 | group) + predictors = random intercept for each level in the group
+(0 | group) + predictors = fixed intercept 
+(1 | group) + (1 | predictor) + predictors = random intercept and random slope for predictor. the remaining predictors are fixed.
+
+Here, we use justicevot ~ (1 | id) + predictors. This means we want a random intercept that changes for each justice. The formula would be: $$justicevot_{ij} = \beta_{0j} + \beta_1(justicemq_{ij}) +...+\epsilon_{ij}$$ 
+
+with $$\beta_{0j} = \gamma_{00} + \mu_{0j}$$
+and this equation, but one $$\beta_1 = \gamma_{10}$$
+
+```{r}
+mod1 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem,
+              family = binomial, data = data,  
+              nAGQ = 1, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+summary(mod1)
+```
+
+
