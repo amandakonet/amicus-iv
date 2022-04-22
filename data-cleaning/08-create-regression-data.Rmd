@@ -45,7 +45,7 @@ case_level %>% head(5)
 justice_level <- justice_level %>% 
   select(case = casename, ddate2,
          justiceid, justicevot, justicemq, justicefem,
-         nonftyp2, lcdisdirfem)
+         nonftyp2, lcdisdirfem, cirsplit)
 
 justice_level %>% head(5)
 ```
@@ -90,17 +90,27 @@ case_level <- case_level %>%
 Then, join & rearrange 
 
 ```{r}
-final <- case_level %>% 
-  left_join(., justice_level, by = "case") %>% 
-  select(case, ddate2:lcdisdirfem, everything())
+# start with justice_level bc this df has cases that the case_level does not
+# these cases don't have amicus briefs, which is why they aren't in our data
+final <- justice_level %>% 
+  left_join(., case_level, by = "case") %>% 
+  select(case, ddate2:cirsplit, everything())
+
+# use this code if we don't want to include cases w/o amici
+#final <- case_level %>% 
+#  left_join(., justice_level, by = "case") %>% 
+#  select(case, ddate2:cirsplit, everything())
 ```
+
 
 
 # Save
 
 ```{r}
+amicus_only <- "amicus-iv-regression-data.csv"
+full <- "amicus-iv-regression-data-all-cases.csv"
 box_write(final,
-          file_name = "amicus-iv-regression-data.xlsx",
+          file_name = full,
           dir_id = 158993526875)
 ```
 
