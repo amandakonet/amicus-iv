@@ -1,5 +1,5 @@
 ---
-title: "Medauf Amicus Brief Models"
+title: "Mpeauf Amicus Brief Models"
 author: "Amanda Konet"
 date: "`r Sys.Date()`"
 output: pdf_document
@@ -95,7 +95,7 @@ The following frames are significant:
 * 0:
 * 0.01:
 * 0.05:
-* 0.10: bad law
+* 0.10: bad law, physician, physician negative
 
 \newpage
 
@@ -104,7 +104,7 @@ The following frames are significant:
 ```{r}
 mod1 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                medauf_abortion_different,
+                mpeauf_abortion_different,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -120,7 +120,7 @@ summary(mod1)
 ```{r}
 mod2 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                medauf_abortion_immoral,
+                mpeauf_abortion_immoral,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -136,7 +136,7 @@ summary(mod2)
 ```{r}
 mod3 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                medauf_anti_women,
+                mpeauf_anti_women,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -151,7 +151,7 @@ summary(mod3)
 ```{r}
 mod4 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                medauf_bad_law,
+                mpeauf_bad_law,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -166,7 +166,7 @@ summary(mod4)
 ```{r}
 mod5 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                medauf_bodily_integrity,
+                mpeauf_bodily_integrity,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -181,7 +181,7 @@ summary(mod5)
 ```{r}
 mod6a <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                medauf_compulsory_motherhood,
+                mpeauf_compulsory_motherhood,
               family = binomial, data = data,  
               nAGQ = 1, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -196,7 +196,7 @@ summary(mod6a)
 ```{r}
 mod6b <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                medauf_compulsory_motherhood_ii,
+                mpeauf_compulsory_motherhood_ii,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -212,7 +212,7 @@ summary(mod6b)
 ```{r}
 mod7 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                medauf_couple,
+                mpeauf_couple,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -228,7 +228,7 @@ summary(mod7)
 ```{r}
 mod8 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                medauf_equal_protection,
+                mpeauf_equal_protection,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -244,7 +244,7 @@ summary(mod8)
 ```{r}
 mod9 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                medauf_evidence,
+                mpeauf_evidence,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -260,7 +260,7 @@ summary(mod9)
 ```{r}
 mod10 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                medauf_favor_childbirth,
+                mpeauf_favor_childbirth,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -276,7 +276,7 @@ summary(mod10)
 ```{r}
 mod11 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                medauf_fetus,
+                mpeauf_fetus,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -291,7 +291,7 @@ summary(mod11)
 ```{r}
 mod12 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                medauf_final_authority,
+                mpeauf_final_authority,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -306,7 +306,7 @@ summary(mod12)
 ```{r}
 mod13 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                medauf_informed_consent,
+                mpeauf_informed_consent,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -321,7 +321,7 @@ summary(mod13)
 ```{r}
 mod13 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                medauf_intersectionality,
+                mpeauf_intersectionality,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -336,7 +336,7 @@ summary(mod13)
 ```{r}
 mod14 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                medauf_morality_religion,
+                mpeauf_morality_religion,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -352,7 +352,7 @@ summary(mod14)
 ```{r}
 mod15 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                medauf_overturn_roe,
+                mpeauf_overturn_roe,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -368,7 +368,7 @@ summary(mod15)
 ```{r}
 mod16 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                medauf_physician,
+                mpeauf_physician,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -384,7 +384,7 @@ summary(mod16)
 ```{r}
 mod17 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                medauf_physician_negative,
+                mpeauf_physician_negative,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -399,7 +399,7 @@ summary(mod17)
 ```{r}
 mod18 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                medauf_privacy,
+                mpeauf_privacy,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -414,7 +414,7 @@ summary(mod18)
 ```{r}
 mod19 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                medauf_protesters,
+                mpeauf_protesters,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -429,7 +429,7 @@ summary(mod19)
 ```{r}
 mod20 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                medauf_standing,
+                mpeauf_standing,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -444,7 +444,7 @@ summary(mod20)
 ```{r}
 mod21 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                medauf_state_interest,
+                mpeauf_state_interest,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -456,11 +456,10 @@ summary(mod21)
 
 # Uncertainty
 
-
 ```{r}
 mod22 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                medauf_uncertainty,
+                mpeauf_uncertainty,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -475,7 +474,7 @@ summary(mod22)
 ```{r}
 mod23 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                medauf_undue_burden,
+                mpeauf_undue_burden,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -491,7 +490,7 @@ summary(mod23)
 ```{r}
 mod24 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                medauf_untruthful,
+                mpeauf_untruthful,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -508,7 +507,7 @@ summary(mod24)
 ```{r}
 mod25 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                medauf_womens_future_life,
+                mpeauf_womens_future_life,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -524,7 +523,7 @@ summary(mod25)
 ```{r}
 mod26 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                medauf_womens_health,
+                mpeauf_womens_health,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -540,7 +539,7 @@ summary(mod26)
 ```{r}
 mod27 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                medauf_womens_rights,
+                mpeauf_womens_rights,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))

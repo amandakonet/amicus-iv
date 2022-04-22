@@ -12,6 +12,9 @@ library(tidyverse)
 library(lme4)
 library(boxr)
 box_auth()
+
+amicus_only <- "948366662469"
+full_cases <- "948832669583"
 ```
 
 # Data
@@ -19,7 +22,7 @@ box_auth()
 Filter out instances where we don't have the dependent variable, justicevot. Change data types where necessary. Fill in NAs for frame freq with 0s
 
 ```{r}
-data <- box_read("948366662469") %>% 
+data <- box_read(full_cases) %>% 
   filter(justicevot != "NA") %>% 
   mutate(justicevot = as.numeric(justicevot),
          justiceid = as.factor(justiceid),
@@ -33,13 +36,13 @@ Add Case ID-- this will be the second level var
 ```{r}
 case_ids <- data %>% distinct(case) %>% arrange(case) %>% mutate(id = 1:n())
 data <- case_ids %>% left_join(., data, by = "case")
-data %>% head(1) %>% select(case:justicefem)
+#data %>% head(1) %>% select(case:justicefem)
 ```
 
 
 # Scale Data
 
-Remove cols where all values are NA. Not sure if we will do this or not in models. Technically, we should...?
+Remove cols where all values are NA. Not sure if we will do this or not in models. 
 
 ```{r}
 data_scale <- data %>%           # Applying functions of dplyr
@@ -88,8 +91,10 @@ womens_rights
 
 The following frames are significant: 
 
-* 0.5: compulsory_motherhood, morality&relig, protesters
-* .1: undue burden 
+* 0:
+* 0.01
+* 0.05:
+* .1:
 
 \newpage
 
@@ -99,7 +104,7 @@ The following frames are significant:
 mod1 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
                 medauo_abortion_different,
-              family = binomial, data = data_scale,  
+              family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
 
@@ -423,7 +428,7 @@ summary(mod19)
 ```{r}
 mod20 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                medauo_physician,
+                medauo_standing,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -449,6 +454,7 @@ summary(mod21)
 \newpage
 
 # Uncertainty
+
 
 ```{r}
 mod22 <- glmer(justicevot ~
