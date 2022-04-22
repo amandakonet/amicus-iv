@@ -1,0 +1,550 @@
+---
+title: "Govauf Amicus Brief Models"
+author: "Amanda Konet"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F)
+
+library(tidyverse)
+library(lme4)
+library(boxr)
+box_auth()
+
+amicus_only <- "948366662469"
+full_cases <- "948832669583"
+```
+
+# Data
+
+Filter out instances where we don't have the dependent variable, justicevot. Change data types where necessary. Fill in NAs for frame freq with 0s
+
+```{r}
+data <- box_read(full_cases) %>% 
+  filter(justicevot != "NA") %>% 
+  mutate(justicevot = as.numeric(justicevot),
+         justiceid = as.factor(justiceid),
+         justicefem = as.factor(justicefem),
+         nonftyp2 = as.factor(nonftyp2)) %>% 
+  mutate(across(c(govauf_abortion_different:sgauo_womens_rights), ~replace_na(.x, 0)))
+```
+
+Add Case ID-- this will be the second level var
+
+```{r}
+case_ids <- data %>% distinct(case) %>% arrange(case) %>% mutate(id = 1:n())
+data <- case_ids %>% left_join(., data, by = "case")
+#data %>% head(1) %>% select(case:justicefem)
+```
+
+
+# Scale Data
+
+Remove cols where all values are NA. Not sure if we will do this or not in models. 
+
+```{r}
+data_scale <- data %>%
+  mutate(across(c(where(is.numeric), -justicevot, -id),
+                ~(scale(., center=T, scale=T) %>% as.vector)))
+
+data_scale <- janitor::remove_empty(data_scale, which = "cols")
+```
+
+
+```{r, eval=F}
+# Full List of Frames
+
+_abortion_different +
+_abortion_immoral +
+_anti_women +
+_bad_law + 
+_bodily_integrity + 
+_compulsory_motherhood +   
+_compulsory_motherhoood_ii +
+_couple +
+_equal_protection +
+_evidence  +
+_favor_childbirth +
+_fetus +
+_final_authority +
+_informed_consent +
+_intersectionality +
+_morality_religion +
+_overturn_roe  +
+_physician +
+_physician_negative +
+_privacy  +
+_protesters +               
+_standing +
+_state_interest +
+_uncertainty +
+_undue_burden +
+_untruthful +
+_womens_future_life + 
+_womens_health + 
+womens_rights
+```
+
+
+# Significance
+
+The following frames are significant: 
+
+* 0:
+* 0.01:
+* 0.05:
+* 0.10: 
+
+
+\newpage
+
+# Abortion different
+
+```{r}
+mod1 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
+                govauf_abortion_different,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod1)
+```
+
+\newpage
+
+# Abortion Immoral
+
+
+```{r}
+mod2 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
+                govauf_abortion_immoral,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod2)
+```
+
+\newpage
+
+# Anti-Women
+
+
+```{r}
+mod3 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
+                govauf_anti_women,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod3)
+```
+
+\newpage
+
+# Bad Law
+
+```{r}
+mod4 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
+                govauf_bad_law,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod4)
+```
+
+\newpage
+
+# Bodily Integrity
+
+```{r}
+mod5 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
+                govauf_bodily_integrity,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod5)
+```
+
+\newpage
+
+# Comp Motherhood
+
+```{r}
+mod6a <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
+                govauf_compulsory_motherhood,
+              family = binomial, data = data,  
+              nAGQ = 1, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod6a)
+```
+
+\newpage
+
+# Compulsory Motherhood II
+
+```{r}
+mod6b <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
+                govauf_compulsory_motherhood_ii,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod6b)
+```
+
+
+\newpage
+
+# Couple
+
+```{r}
+mod7 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
+                govauf_couple,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod7)
+```
+
+
+\newpage
+
+# Eql Protection
+
+```{r}
+mod8 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
+                govauf_equal_protection,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod8)
+```
+
+
+\newpage
+
+# Evidence
+
+```{r}
+mod9 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
+                govauf_evidence,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod9)
+```
+
+
+\newpage
+
+# Favor Childbirth
+
+```{r}
+mod10 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
+                govauf_favor_childbirth,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod10)
+```
+
+
+\newpage
+
+# Fetus
+
+```{r}
+mod11 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
+                govauf_fetus,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod11)
+```
+
+\newpage
+
+# Final Authority
+
+```{r}
+mod12 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
+                govauf_final_authority,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod12)
+```
+
+\newpage
+
+# Informed Consent
+
+```{r}
+mod13 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
+                govauf_informed_consent,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod13)
+```
+
+\newpage
+
+# Intersectionality
+
+```{r}
+mod13 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
+                govauf_intersectionality,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod13)
+```
+
+\newpage
+
+# Morality Religion
+
+```{r}
+mod14 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
+                govauf_morality_religion,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod14)
+```
+
+
+\newpage
+
+# Overturn Roe
+
+```{r}
+mod15 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
+                govauf_overturn_roe,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod15)
+```
+
+
+\newpage
+
+# Physician
+
+```{r}
+mod16 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
+                govauf_physician,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod16)
+```
+
+
+\newpage
+
+# Physician Negative
+
+```{r}
+mod17 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
+                govauf_physician_negative,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod17)
+```
+
+\newpage
+
+# Privacy
+
+```{r}
+mod18 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
+                govauf_privacy,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod18)
+```
+
+\newpage
+
+# Protesters
+
+```{r}
+mod19 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
+                govauf_protesters,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod19)
+```
+
+\newpage
+
+# Standing
+
+```{r}
+mod20 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
+                govauf_standing,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod20)
+```
+
+\newpage
+
+# State Interest
+
+```{r}
+mod21 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
+                govauf_state_interest,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod21)
+```
+
+\newpage
+
+# Uncertainty
+
+```{r}
+mod22 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
+                govauf_uncertainty,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod22)
+```
+
+\newpage
+
+# Undue Burden
+
+```{r}
+mod23 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
+                govauf_undue_burden,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod23)
+```
+
+
+\newpage
+
+# Untruthful
+
+```{r}
+mod24 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
+                govauf_untruthful,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod24)
+```
+
+
+
+\newpage
+
+# Women's Future Life
+
+```{r}
+mod25 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
+                govauf_womens_future_life,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod25)
+```
+
+
+\newpage
+
+# Women's Health
+
+```{r}
+mod26 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
+                govauf_womens_health,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod26)
+```
+
+
+\newpage
+
+# Women's Rights
+
+```{r}
+mod27 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
+                govauf_womens_rights,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod27)
+```
+

@@ -12,6 +12,12 @@ library(tidyverse)
 library(lme4)
 library(boxr)
 box_auth()
+
+# data id
+amicus_only <- "948366662469"
+full_cases <- "948832669583"
+
+#**Note: The data used in these models is *the full set* of abortion cases. Cases *without* amici are included and their frame measures are all 0s.**
 ```
 
 # Multilevel Modeling
@@ -23,11 +29,12 @@ In this file, we use multilevel modeling to test whether frames articulated in a
 Filter out instances where we don't have the dependent variable, justicevot. Change data types where necessary. Fill in NAs for frame freq with 0s
 
 ```{r}
-data <- box_read("947772227392") %>% 
+data <- box_read(amicus_only) %>% 
   filter(justicevot != "NA") %>% 
   mutate(justicevot = as.numeric(justicevot),
          justiceid = as.factor(justiceid),
          justicefem = as.factor(justicefem),
+         cirsplit = as.factor(cirsplit),
          nonftyp2 = as.factor(nonftyp2)) %>% 
   mutate(across(c(aclauf_abortion_different:sgauo_womens_rights), ~replace_na(.x, 0)))
 ```
@@ -51,7 +58,7 @@ Because our outcome is binary (yes/no), we use glmer (generalized mixed model) a
 resnull <- glmer(justicevot ~ (1|id)+1 ,family = "binomial", data = data)  
 summary(resnull)
 ```
-We are good to proceed
+ICC for model with no covariates
 
 ```{r}
 calc_ICC <-function(Model.Name) {
@@ -65,7 +72,7 @@ calc_ICC(resnull)
 
 
 
-# Base Model
+# Base Model (lcdisdirfem)
 
 (1 | group) + predictors = random intercept for each level in the group
 (0 | group) + predictors = fixed intercept 
@@ -77,12 +84,36 @@ with $$\beta_{0j} = \gamma_{00} + \mu_{0j}$$
 and this equation, but one $$\beta_1 = \gamma_{10}$$
 
 ```{r}
-mod1 <- glmer(justicevot ~
+base_mod <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem,
               family = binomial, data = data,  
               nAGQ = 1, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
-summary(mod1)
+summary(base_mod)
+```
+
+ICC for base model
+
+```{r}
+calc_ICC(base_mod)
 ```
 
 
+# Base Model 2 (cirsplit)
+
+Use cirsplit instead of lcdisdirfem
+
+```{r}
+base_mod_2 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + nonftyp2 + cirsplit,
+              family = binomial, data = data,  
+              nAGQ = 1, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+summary(base_mod_2)
+```
+
+ICC for base model
+
+```{r}
+calc_ICC(base_mod_2)
+```
