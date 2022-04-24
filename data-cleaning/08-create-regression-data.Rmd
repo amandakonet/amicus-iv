@@ -13,7 +13,7 @@ library(tidyverse)
 library(boxr)
 box_auth()
 
-case_level <- box_read("947450386335")
+case_amici_level <- box_read("947450386335")
 justice_level <- box_read("947810760828")
 ```
 
@@ -28,7 +28,7 @@ To create regression data for Amicus IV. The dependent variable is justicevot. T
 Currently, case_level has one row per frame per case. We want one row per case.
 
 ```{r}
-case_level <- case_level %>% 
+case_level <- case_amici_level %>% 
   rename_with(.cols=contains("freq"), .fn=~sub("_freq.*", "", .x)) %>% 
   pivot_wider(., c(case,author_type),
               names_from = author_type,
@@ -111,6 +111,32 @@ amicus_only <- "amicus-iv-regression-data.csv"
 full <- "amicus-iv-regression-data-all-cases.csv"
 box_write(final,
           file_name = full,
+          dir_id = 158993526875)
+```
+
+# One measure per frame
+
+Instead of looking at measures by author type, look at aggregation of measures. 
+
+```{r}
+case_amici_level <- case_amici_level %>% 
+  mutate(case = str_replace(case, 'v\\.', 'v'),
+        case = str_replace_all(case, "(,|’|'|\\)|\\()", ""))
+
+# sum up frequencies by frame
+case_amici_level <- case_amici_level %>% group_by(case) %>% 
+  summarize(across(contains("freq"), ~ sum(.x, na.rm = TRUE)))
+
+final <- case_amici_level %>% 
+  left_join(., justice_level, by = "case") %>% 
+  select(case, ddate2:cirsplit, everything())
+```
+
+Save
+
+```{r}
+box_write(final,
+          file_name = "amicus-iv-regression-data-frame-by-case-amici-only.csv",
           dir_id = 158993526875)
 ```
 
