@@ -21,6 +21,12 @@ justice_level <- box_read("947810760828")
 
 To create regression data for Amicus IV. The dependent variable is justicevot. The controls are: justicemq, justicefem, nonftyp2, lcdisdirfem. The independent vars are the framing measures.
 
+Cases to exclude and keep:
+
+Exclude: Anders, Connecticut v Menillo, Guste, Hartigan, Joseph Mazurek, Benten, Lambert, Leavitt, Poe v Gerstein
+
+Include: Bellotti 1976, Singleton v Wulff
+
 
 # Refactor case-level data
 
@@ -41,11 +47,15 @@ case_level %>% head(5)
 
 # Select vars from justice-level file
 
+
 ```{r}
 justice_level <- justice_level %>% 
+  filter(
+    !grepl("Menillo|Guste|Hartigan|Mazurek|Benten|Lambert|Leavitt|Gerstein", casename)) %>% 
   select(case = casename, ddate2,
          justiceid, justicevot, justicemq, justicefem,
-         nonftyp2, lcdisdirfem, cirsplit)
+         nonftyp2, lcdisdirfem, cirsplit,
+         cfemam, coppam, pfemam, poppam)
 
 justice_level %>% head(5)
 ```
@@ -62,6 +72,7 @@ justice_level <- justice_level %>%
            case == "Anders Solicitor of Richland County v Floyd" ~ "Anders v Floyd",
            case == "Ayotte v Planned Parenthood of Northern New England" ~ "Ayotte v PP",
            case == "City of Akron v Akron Center for Rep Health" ~ "City of Akron v Akron Center",
+           case == "Gonzales v Planned Parenthood Federation of America" ~ "Gonzales v PP",
            case == "Hill et al v Colorado" ~ "Hill v Colorado",
            case == "Judy Madsen v Womens Health Center" ~ "Madsen v Womens Health Center",
            case == "NOW v Joseph Scheidler 1994" ~ "NOW v Scheidler 1994",
@@ -94,7 +105,7 @@ Then, join & rearrange
 # these cases don't have amicus briefs, which is why they aren't in our data
 final <- justice_level %>% 
   left_join(., case_level, by = "case") %>% 
-  select(case, ddate2:cirsplit, everything())
+  select(case, ddate2:poppam, everything())
 
 # use this code if we don't want to include cases w/o amici
 #final <- case_level %>% 
@@ -103,14 +114,14 @@ final <- justice_level %>%
 ```
 
 
-
 # Save
 
 ```{r}
-amicus_only <- "amicus-iv-regression-data.csv"
-full <- "amicus-iv-regression-data-all-cases.csv"
+#amicus_only <- "amicus-iv-regression-data.csv"
+#full <- "amicus-iv-regression-data-all-cases.csv"
+final_case <- "amicus-iv-regression-data-final-cases.csv"
 box_write(final,
-          file_name = full,
+          file_name = final_case,
           dir_id = 158993526875)
 ```
 
@@ -136,7 +147,43 @@ Save
 
 ```{r}
 box_write(final,
-          file_name = "amicus-iv-regression-data-frame-by-case-amici-only.csv",
+          file_name = "amicus-iv-regression-data-frame-by-case-final-cases.csv",
           dir_id = 158993526875)
 ```
 
+# Two measures per frame: fem and opp
+
+Instead of looking at use of frame across all amici, separate into fem and opp, and then aggregate
+
+```{r}
+case_amici_level <- case_amici_level %>% 
+  mutate(case = str_replace(case, 'v\\.', 'v'),
+        case = str_replace_all(case, "(,|’|'|\\)|\\()", ""))
+
+# sum up frequencies by frameXparty
+case_party_level <- case_amici_level %>% 
+  mutate(party = ifelse(grepl("auf", author_type), "fem", "opp")) %>% 
+  group_by(case, party) %>% 
+  summarize(across(contains("freq"), ~ sum(.x, na.rm = TRUE)))
+
+# reorg
+case_party_level <- case_party_level %>% 
+  rename_with(.cols=contains("freq"), .fn=~sub("_freq.*", "", .x)) %>% 
+  pivot_wider(., c(case,party),
+              names_from = party,
+              values_from=c(abortion_different:womens_rights),
+              names_glue = "{party}_{.value}") %>% 
+  select(case, sort(colnames(.)))
+
+final <- justice_level %>% 
+  left_join(., case_party_level, by = "case") %>% 
+  select(case, ddate2:poppam, everything())
+```
+
+Save
+
+```{r}
+box_write(final,
+          file_name = "amicus-iv-regression-data-frame-by-party-case-final-cases.csv",
+          dir_id = 158993526875)
+```

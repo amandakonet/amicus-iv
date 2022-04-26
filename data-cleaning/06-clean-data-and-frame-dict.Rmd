@@ -203,6 +203,8 @@ frames <- frames %>% mutate(word_clean = fix_chars(word))
 3. Clean text & lowercase
 
 ```{r}
+stops <- stopwords("en")
+
 # The clean_text function
 clean_text_frames <- function(x) {
   
@@ -308,7 +310,7 @@ frames <- frames %>% mutate(word_clean = gsub("[^[:alpha:][:space:]]", " ", word
 Check 
 
 ```{r}
-frames <- frames %>% distinct(frame, frame_code, word, word_clean)
+frames <- frames %>% distinct(frame, frame_code, word_clean)
 ```
 
 Save
