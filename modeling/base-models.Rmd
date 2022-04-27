@@ -16,8 +16,7 @@ box_auth()
 # data id
 amicus_only <- "948366662469"
 full_cases <- "948832669583"
-
-#**Note: The data used in these models is *the full set* of abortion cases. Cases *without* amici are included and their frame measures are all 0s.**
+final_cases <- "949901868853"
 ```
 
 # Multilevel Modeling
@@ -29,7 +28,7 @@ In this file, we use multilevel modeling to test whether frames articulated in a
 Filter out instances where we don't have the dependent variable, justicevot. Change data types where necessary. Fill in NAs for frame freq with 0s
 
 ```{r}
-data <- box_read(amicus_only) %>% 
+data <- box_read(final_cases) %>% 
   filter(justicevot != "NA") %>% 
   mutate(justicevot = as.numeric(justicevot),
          justiceid = as.factor(justiceid),
