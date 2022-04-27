@@ -19,6 +19,12 @@ library(janitor)
 # plotting
 library(ggplot2)
 library(ggpubr)
+#library(extrafont)
+#font_import()
+#loadfonts(device = "all")
+
+library(showtext)
+font_add_google(name = "Quattrocento Sans")
 
 # data
 amicus <- box_read("942861514695")
@@ -272,22 +278,37 @@ medauf <- medauf %>%
 New graph
 
 ```{r}
+# turn on showtext
+
+```
+
+
+```{r}
+showtext_auto()
 medauf_adj <- medauf %>% 
-  filter(label_correct != "none") %>% 
+  filter(label_correct != "none", label_correct != "Violence Against Abortion Seekers") %>%
+  mutate(Count = Count) %>% 
   ggplot(., aes(x=x, y=y, color=as.factor(label_correct), size=Count)) +
   geom_point(alpha=0.6) +
   theme_minimal() +
-  guides(size = "none") +
+  guides(size = "none",
+         color=guide_legend(nrow=3, byrow=TRUE)) +
   labs(
     x = "Dimension 2", y = "Dimension 1",
-    title = "Adjusted Medical Org Arguments (pro)",
+    title = "Medical Organizations' Arguments (Proponents)",
     color = "Argument"
-  )
+  ) +
+  theme(legend.title=element_text(size=16, family = "Quattrocento Sans"),
+        legend.text=element_text(size=16, family = "Quattrocento Sans"),
+        legend.position="bottom", legend.direction="vertical",
+        title = element_text(size=14, family = "Quattrocento Sans"),
+        axis.text = element_text(size=12, family = "Quattrocento Sans"),
+        axis.title = element_text(size=12, family = "Quattrocento Sans"))
 medauf_adj
 ```
 
 ```{r}
-ggsave("medauf_adj.png",medauf_adj,height = 4, width = 6)
+ggsave("medauf_adj.png",medauf_adj,height = 7, width = 9)
 ```
 
 
