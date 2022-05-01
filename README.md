@@ -1,9 +1,8 @@
-# Amicus IV
+# Arguments in Abortion/Reproductive Rights Amicus Briefs
 
 Purpose: To investigate how "important" the contents of amicus briefs are in a Supreme Court justice's vote in an abortion case. 
 
-
-Notes: All data to be saved on Box **only** (Amicus IV - data)
+Note: All data to be saved on Box **only** (Amicus IV - data)
 
 ## Background
 
@@ -29,6 +28,7 @@ We have dozens of potential variables categorized by the "level" they belong to:
 
 * Decision Date
 * Case type (minor's rights, late-term abortion, anti-abortion protestors, etc.)
+* Whether the lower court decision was in favor of feminists (repro rights) side
 
 *Justice Level*
 
@@ -39,28 +39,44 @@ We have dozens of potential variables categorized by the "level" they belong to:
 
 * Count of amicus briefs per case
 * Type (num of legal, medical, feminist, etc. amicus briefs per case)
-* Lexical diversity 
-* Document similarity 
 * Topics (using topic modeling, what are the authors discussing in briefs?)
 * Frames (Dr. McCammon's qualitatively constructed "topics" - we'd either include the topic modeling frames or these, whichever are more informative)
-* Sentiment around "women"
-* Text "readability" or quality
-* Overall sentiment 
 
 *Author Level*
 
 * Author count
 * Author diversity measures
 
-
 ## Potential Models
 
 The type of data we have (clustered) belongs to a class of data where observations are grouped in some way. Other examples included panel and longitudinal data. 
 
 1. Random effects (or multi-level or mixed effects) models (linear regression w/constraints for different levels)
-2. Bayesian models (hierarchical nature of these models suits clustered data)
-3. Existing machine learning algorithms adapted with constraints 
+    - Note: This is the model used in this projects. Further models will be explored at a later date. 
+3. Bayesian models (hierarchical nature of these models suits clustered data)
+4. Existing machine learning algorithms adapted with constraints 
     - GPBoost: tree boosting & mixed effects ([blog post which also links to research article](https://towardsdatascience.com/tree-boosted-mixed-effects-models-4df610b624cb) and [python implementation](https://github.com/fabsig/GPBoost))
     - MERF: Mixed Effects Random Forests ([blog post, links to research article](https://towardsdatascience.com/mixed-effects-random-forests-6ecbb85cb177) and [python implementation](https://pypi.org/project/merf/))
     - these have similar performance but GPBoost is much faster
+
+
+## Repository Structure
+
+The files can be perused in the following folder order:
+1. Data Cleaning
+     - Contains all files used to clean data for transformers finetuning, topic modeling, and multi-level modeling.
+3. EDA
+     - Files for exploratory analysis 
+     - Includes file for generating capstone report graphics
+5. MLM-Finetuning
+     - Jupyter notebooks for fine-tuning transformers (BERT, DistilBERT, and LegalBERT) on the masked-language modeling task
+7. NLP
+     - Contains folders for topic modeling and for zero-shot classification using the finetuned models from above. Both tasks completed entirely in python/colab notebooks
+9. Modeling
+     - Rmd files for multi-level modeling to test whether presence of arguments influences justice decision-making
+
+
+## Acknowledgements:
+
+Special thank you to Dr. Holly McCammon for her guidance on this project and Sarah Torrence for her support. 
 
