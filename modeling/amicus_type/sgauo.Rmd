@@ -22,7 +22,7 @@ full_cases <- "948832669583"
 Filter out instances where we don't have the dependent variable, justicevot. Change data types where necessary. Fill in NAs for frame freq with 0s
 
 ```{r}
-data <- box_read(full_cases) %>% 
+data <- box_read(amicus_only) %>% 
   filter(justicevot != "NA") %>% 
   mutate(justicevot = as.numeric(justicevot),
          justiceid = as.factor(justiceid),
@@ -45,11 +45,11 @@ data <- case_ids %>% left_join(., data, by = "case")
 Remove cols where all values are NA. Not sure if we will do this or not in models. 
 
 ```{r}
-data_scale <- data %>%
+data <- data %>%
   mutate(across(c(where(is.numeric), -justicevot, -id),
                 ~(scale(., center=T, scale=T) %>% as.vector)))
 
-data_scale <- janitor::remove_empty(data_scale, which = "cols")
+data <- janitor::remove_empty(data, which = "cols")
 ```
 
 
@@ -95,7 +95,7 @@ The following frames are significant:
 * 0:
 * 0.01:
 * 0.05:
-* 0.10: women's health
+* 0.10: bad law
 
 
 \newpage
@@ -350,7 +350,7 @@ summary(mod14)
 
 # Overturn Roe
 
-```{r}
+```{r, eval=F}
 mod15 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
                 sgauo_overturn_roe,
@@ -412,7 +412,7 @@ summary(mod18)
 
 # Protesters
 
-```{r}
+```{r, eval=F}
 mod19 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
                 sgauo_protesters,
@@ -457,7 +457,7 @@ summary(mod21)
 
 # Uncertainty
 
-```{r}
+```{r, eval=F}
 mod22 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
                 sgauo_uncertainty,

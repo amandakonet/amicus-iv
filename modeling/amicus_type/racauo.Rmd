@@ -22,7 +22,7 @@ full_cases <- "948832669583"
 Filter out instances where we don't have the dependent variable, justicevot. Change data types where necessary. Fill in NAs for frame freq with 0s
 
 ```{r}
-data <- box_read(full_cases) %>% 
+data <- box_read(amicus_only) %>% 
   filter(justicevot != "NA") %>% 
   mutate(justicevot = as.numeric(justicevot),
          justiceid = as.factor(justiceid),
@@ -45,11 +45,11 @@ data <- case_ids %>% left_join(., data, by = "case")
 Remove cols where all values are NA. Not sure if we will do this or not in models. 
 
 ```{r}
-data_scale <- data %>%
+data <- data %>%
   mutate(across(c(where(is.numeric), -justicevot, -id),
                 ~(scale(., center=T, scale=T) %>% as.vector)))
 
-data_scale <- janitor::remove_empty(data_scale, which = "cols")
+data <- janitor::remove_empty(data, which = "cols")
 ```
 
 
@@ -102,7 +102,7 @@ The following frames are significant:
 
 # Abortion different
 
-```{r}
+```{r, eval=F}
 mod1 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
                 racauo_abortion_different,
@@ -134,7 +134,7 @@ summary(mod2)
 # Anti-Women
 
 
-```{r}
+```{r, eval=F}
 mod3 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
                 racauo_anti_women,
@@ -149,7 +149,7 @@ summary(mod3)
 
 # Bad Law
 
-```{r}
+```{r, eval=F}
 mod4 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
                 racauo_bad_law,
@@ -164,7 +164,7 @@ summary(mod4)
 
 # Bodily Integrity
 
-```{r}
+```{r, eval=F}
 mod5 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
                 racauo_bodily_integrity,
@@ -179,7 +179,7 @@ summary(mod5)
 
 # Comp Motherhood
 
-```{r}
+```{r, eval=F}
 mod6a <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
                 racauo_compulsory_motherhood,
@@ -194,7 +194,7 @@ summary(mod6a)
 
 # Compulsory Motherhood II
 
-```{r}
+```{r, eval=F}
 mod6b <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
                 racauo_compulsory_motherhood_ii,
@@ -258,7 +258,7 @@ summary(mod9)
 
 # Favor Childbirth
 
-```{r}
+```{r, eval=F}
 mod10 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
                 racauo_favor_childbirth,
@@ -304,7 +304,7 @@ summary(mod12)
 
 # Informed Consent
 
-```{r}
+```{r, eval=F}
 mod13 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
                 racauo_informed_consent,
@@ -412,7 +412,7 @@ summary(mod18)
 
 # Protesters
 
-```{r}
+```{r, eval=F}
 mod19 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
                 racauo_protesters,
@@ -488,7 +488,7 @@ summary(mod23)
 
 # Untruthful
 
-```{r}
+```{r, eval=F}
 mod24 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
                 racauo_untruthful,
@@ -505,7 +505,7 @@ summary(mod24)
 
 # Women's Future Life
 
-```{r}
+```{r, eval=F}
 mod25 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
                 racauo_womens_future_life,
@@ -537,7 +537,7 @@ summary(mod26)
 
 # Women's Rights
 
-```{r}
+```{r, eval=F}
 mod27 <- glmer(justicevot ~
                 (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
                 racauo_womens_rights,
