@@ -150,6 +150,42 @@ box_write(final,
           file_name = "amicus-iv-regression-data-frame-by-case-final-cases.csv",
           dir_id = 158993526875)
 ```
+Pared down for review:
+
+* women's frames (women's health, rights, future life, compulsory motherhood I and II, abortion regret)
+
+* law frames (bad law, undue burden, overturn roe, privacy, standing, final authority)
+
+* morality & religion
+
+* evidence frames (evidence, uncertainty, untruthful)
+
+
+```{r}
+final_pared <- final %>% 
+  rename_with(.cols=contains("freq"), .fn=~sub("_freq.*", "", .x)) %>% 
+  select(case:cirsplit,
+         abortion_different,
+         abortion_regret, womens_health, womens_rights, womens_future_life,
+         compulsory_motherhood, compulsory_motherhood_ii,
+         bad_law, undue_burden, overturn_roe, privacy, standing, final_authority,
+         morality_religion,
+         evidence, uncertainty, untruthful) %>% 
+  filter(case != "Hartigan v Zbaraz") %>%
+  filter(!is.na(justicevot)) %>% 
+  select(-c(justiceid:justicefem)) %>% 
+  select(case, ddate2, nonftyp2:cirsplit, sort(colnames(.))) %>% 
+  distinct()
+```
+
+Save
+
+```{r}
+box_write(final,
+          file_name = "frame freq by case (pared).xlsx",
+          dir_id = 158993526875)
+```
+
 
 # Two measures per frame: fem and opp
 
@@ -187,3 +223,10 @@ box_write(final,
           file_name = "amicus-iv-regression-data-frame-by-party-case-final-cases.csv",
           dir_id = 158993526875)
 ```
+
+
+
+
+
+
+

@@ -36,9 +36,9 @@ Amicus data:
 
 ```{r}
 # abortion cases
-amicus <- box_read("947307207905", read_fun = readr::read_csv)
+amicus <- box_read("947307207905", read_fun = readr::read_csv) %>% 
+  mutate(brief_party = ifelse(id == 861815623586, 1, brief_party))
 ```
-
 
 
 # Amicus-Level Measures
@@ -202,6 +202,7 @@ box_write(amicus_frames,
 ```
 
 
+
 # Case-Level Measures
 
 To generate case-level measures:
@@ -228,9 +229,6 @@ sum_amicus <- amicus %>% select(case, id, forgau:sgauo) %>%
   select(case, id, author_type, value, contains("freq"))
 
 sum_amicus %>% head()
-```
-```{r}
-sum_amicus %>% filter(case == "Anders v Floyd" | case == "Ayotte v. PP")
 ```
 
 
