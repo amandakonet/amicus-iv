@@ -1,0 +1,74 @@
+---
+title: "Paper Visualizations"
+author: "Amanda Konet"
+date: "`r date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, warning = F, message = F, error = F)
+library(tidyverse)
+library(ggplot2)
+library(boxr)
+box_auth()
+
+df <- box_read("949901868853", read_fun = readr::read_csv)
+```
+
+
+# Cases per Year
+
+
+```{r}
+num_cases <- df %>%  distinct(case, decision_date=ddate2) %>% 
+  group_by(decision_date) %>% 
+  summarize(n = n())
+
+num_cases %>% 
+  ggplot(., aes(x = decision_date, y = n)) +
+  geom_line() + 
+  labs(
+    x = "Decision Year",
+    y = "Count of Amici",
+    title = "Number of Amici per Case"
+  ) +
+  theme_minimal()
+```
+
+
+# Number of Amici by Case
+
+Data
+
+```{r}
+num_amici <- df %>% 
+  distinct(year = lubridate::year(ddate2), cfemam, coppam) %>% 
+  group_by(year) %>% 
+  summarize(cfemam = mean(cfemam), coppam = mean(coppam))
+```
+
+Plot
+
+```{r}
+amici_ct_plt <- num_amici %>% 
+  ggplot(., aes(x = year)) +
+  geom_line(aes(y = cfemam, linetype = "Feminist")) + 
+  geom_line(aes(y = coppam, linetype = "Opponent")) + 
+  scale_linetype_manual("Party", values=c("Feminist" = 1,"Opponent" = 2)) + 
+  coord_cartesian(ylim = c(0, 50)) +
+  labs(
+    x = "Decision Year",
+    y = "Average Number of Amici",
+    title = "Annual Average Number of Amici for Abortion Cases"
+  ) + 
+  theme_minimal() +
+  theme(
+    title = element_text(size = 10)
+  )
+
+amici_ct_plt
+```
+Check spike
+```{r}
+df %>% filter(lubridate::year(ddate2) == 1989) %>% distinct(case, ddate2, cfemam, coppam)
+```

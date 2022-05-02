@@ -1,0 +1,238 @@
+---
+title: "Fem and Opp Evidence Frames"
+author: "Amanda Konet"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F)
+
+library(tidyverse)
+library(lme4)
+library(boxr)
+box_auth()
+
+#amicus_only <- "948366662469"
+#full_cases <- "948832669583"
+#frame_by_party <- "949813266093"
+final_by_party <- "949904531983"
+```
+
+# Data
+
+Frames: evidence, uncertainty, untruthful, undue burden after 1992
+
+Filter out instances where we don't have the dependent variable, justicevot. Change data types where necessary. Fill in NAs for frame freq with 0s
+
+```{r}
+data <- box_read(final_by_party) %>% 
+  filter(justicevot != "NA") %>% 
+  filter(lubridate::year(ddate2) > 1992) %>% 
+  mutate(justicevot = as.numeric(justicevot),
+         justiceid = as.factor(justiceid),
+         justicefem = as.factor(justicefem),
+         nonftyp2 = as.factor(nonftyp2),
+         lcdisdirfem = ifelse(lcdisdirfem==1, 0, 1),
+         lcdisdirfem = as.factor(lcdisdirfem),
+         cirsplit = as.factor(cirsplit)) %>% 
+  mutate(across(c(fem_abortion_different:opp_womens_rights), ~replace_na(.x, 0)))
+```
+
+
+Add Case ID-- this will be the second level var
+
+```{r}
+case_ids <- data %>% distinct(case) %>% arrange(case) %>% mutate(id = 1:n())
+data <- case_ids %>% left_join(., data, by = "case")
+#data %>% head(1) %>% select(case:justicefem)
+```
+
+
+# Scale Data
+
+Remove cols where all values are NA. Not sure if we will do this or not in models. 
+
+```{r}
+data <- data %>%
+  select(case:cirsplit, pfemam, poppam,
+         contains("evidence"), contains("uncertainty"),
+         contains("undue"), contains("untruthful")) %>% 
+  mutate(across(c(where(is.numeric), -justicevot, -id, -cirsplit),
+                ~(scale(., center=T, scale=T))))
+                #~(scale(., center=T, scale=T) %>% as.vector)))
+
+total_cols <- data %>% select(contains('fem')) %>% colnames()
+data <- janitor::remove_empty(data, which = "cols")
+remaining_cols <- data %>% select(contains('fem')) %>% colnames()
+setdiff(total_cols, remaining_cols)
+```
+
+
+
+```{r, eval=F}
+# Full List of Frames
+
+_abortion_different +
+_abortion_immoral +
+_anti_women +
+_bad_law + 
+_bodily_integrity + 
+_compulsory_motherhood +   
+_compulsory_motherhoood_ii +
+_couple +
+_equal_protection +
+_evidence  +
+_favor_childbirth +
+_fetus +
+_final_authority +
+_informed_consent +
+_intersectionality +
+_morality_religion +
+_overturn_roe  +
+_physician +
+_physician_negative +
+_privacy  +
+_protesters +               
+_standing +
+_state_interest +
+_uncertainty +
+_undue_burden +
+_untruthful +
+_womens_future_life + 
+_womens_health + 
+womens_rights
+```
+
+
+# Significance
+
+The following frames are significant: 
+
+* 0:
+* 0.01: 
+* 0.05: 
+* 0.10: abortion different
+
+
+\newpage
+
+# Evidence (fem)
+
+```{r}
+mod9 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem +
+                fem_evidence + pfemam,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod9)
+```
+
+
+
+# Uncertainty (fem)
+
+```{r}
+mod22 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem +
+                fem_uncertainty + pfemam,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod22)
+```
+
+\newpage
+
+# Undue Burden (fem)
+
+```{r}
+mod23 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem +
+                fem_undue_burden + pfemam,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod23)
+```
+
+
+\newpage
+
+# Untruthful (fem)
+
+```{r}
+mod24 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem +
+                fem_untruthful + pfemam,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod24)
+```
+
+\newpage
+
+# Evidence (opp)
+
+```{r}
+mod9 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem +
+                opp_evidence + poppam,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod9)
+```
+
+
+
+# Uncertainty (opp)
+
+```{r}
+mod22 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem +
+                opp_uncertainty + poppam,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod22)
+```
+
+\newpage
+
+# Undue Burden (opp)
+
+```{r}
+mod23 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem +
+                opp_undue_burden + poppam,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod23)
+```
+
+
+\newpage
+
+# Untruthful (opp)
+
+```{r}
+mod24 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem +
+                opp_untruthful + poppam,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+summary(mod24)
+```
