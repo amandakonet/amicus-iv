@@ -66,6 +66,7 @@ amici_ct_plt <- num_amici %>%
     title = element_text(size = 10)
   )
 
+ggsave("graphics/avg_amici_time.png",amici_ct_plt, height = 5, width = 8)
 amici_ct_plt
 ```
 Check spike
