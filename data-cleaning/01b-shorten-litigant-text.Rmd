@@ -1,0 +1,346 @@
+---
+title: "Shorten Litigant Text"
+author: "Sarah Torrence and Amanda Konet"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T, warning = F, message = F, error = F)
+
+# Box access
+library(boxr)
+box_auth()
+
+# data manip
+library(tidyverse)
+library(tidytext)
+
+# data
+# data/processed litigant files/raw-litigant-brief-text.csv
+litigant <- box_read("955333134918") %>% mutate(id = as.character(id))
+```
+
+# Purpose
+
+To pare down litigant text by removing unnecessary/irrelevant text.
+
+1) Remove text BEFORE "Summary of Argument" keyword.
+
+2) Remove text AFTER "Appendix" keyword
+
+# Remove before "Summary of Argument"
+
+For most documents, there exists the header "summary of argument." If it did not exist, it was manually entered into the document. This represents the point at which the brief starts discussing their argument. We don't need text prior to this, as it's mainly intro information about the case and/or the authors. 
+
+Remove text before summary of argument. Run 2x in the event of a table of contents.
+
+```{r}
+# remove text after "summary of argument" if it exists
+litigant <- litigant %>%
+  mutate(txt_full = str_squish(txt_full),
+         txt_short = case_when(
+           id %in% c(955404304453, 955405038378) ~ txt_full,
+           grepl("summary of argument", txt_full, ignore.case = TRUE) ~
+             gsub(pattern = ".*summary of argument",
+                  replacement = "", x = txt_full, ignore.case = TRUE),
+           grepl("summary of the argument", txt_full, ignore.case = TRUE) ~
+             gsub(pattern = ".*summary of the argument", replacement = "", x = txt_full, ignore.case = TRUE),
+           grepl("mnopqrst", txt_full, ignore.case = T) ~
+             gsub(pattern = ".*mnopqrst", replacement = "", x = txt_full, ignore.case = T),
+           T ~ txt_full),
+         txt_short = str_squish(txt_short))
+```
+
+
+Check none are missed
+
+```{r}
+litigant %>% filter(txt_short == "") %>% select(-txt_full)
+#litigant %>% filter(txt_short == txt_full)
+```
+
+Check a few by running this line a few times.
+
+```{r}
+#litigant %>% sample_n(1) %>% pull(id, txt_short)
+```
+
+# Removing Appendices
+
+## Remove *1A Appendix
+
+Whenever `*1A Appendix` shows up in the text, this is referring to the start of the appendix. We want to remove all text after this phrase from the briefs that contain this phrase.
+
+### find instances of "*1A Appendix" in the text
+
+```{r}
+litigant <- litigant %>%
+  mutate(txt_short = str_squish(txt_short),
+    appendix_1a = str_count(txt_short, "\\*1a Appendix|\\*1A APPENDIX|\\*1A Appendix|\\*IA APPENDIX"))
+```
+
+Check that this only occurs 1x in a doc. 
+
+```{r}
+table(litigant$appendix_1a)
+```
+
+
+Since this phrase only occurs once in the briefs in which it is present, we can just remove all text after this text for those 56 briefs.
+
+```{r}
+litigant <- litigant %>% mutate(
+         txt_short = str_squish(txt_short),
+         txt_short = case_when(
+           grepl("\\*1a appendix|\\*ia appendix", txt_short, ignore.case = TRUE) ~ 
+             gsub(pattern = "\\*1a appendix.*|\\*ia appendix.*", replacement = "", x = txt_short,
+                  ignore.case = TRUE),
+           T ~ txt_short),
+         txt_short = str_squish(txt_short))
+```
+
+Checking to make sure `*1A Appendix` references have been removed.
+
+```{r}
+a <- litigant %>%
+  mutate(appendix_1a = str_count(txt_short, "\\*1a Appendix|\\*1A APPENDIX|\\*1A Appendix"))
+
+table(a$appendix_1a)
+```
+
+## Handling APPENDIX A cases
+
+From some manual inspection, it looks like when `APPENDIX A` is mentioned in all caps that is it referring to the first section of the appendix.
+
+Let's see how many documents have `APPENDIX A` in them.
+```{r}
+litigant$appendix_a <- ifelse(litigant$appendix_1a < 1, str_count(litigant$txt_short, "APPENDIX A"), 0)
+
+table(litigant$appendix_a)
+```
+
+`APPENDIX A` occurs in 2 briefs that did not already have the appendix removed. 
+
+We want to manually look at some of the briefs that mention `APPENDIX A` to make sure it really is at the beginning of the appendix.
+
+```{r}
+litigant %>% filter(appendix_a > 0) %>% select(id, appendix_a)
+```
+
+After checking 10 briefs that mention `APPENDIX A` once and the 1 brief that mentions it twice, all first instances refer to the beginning of the appendix. Therefore, we can remove all text after `APPENDIX A`.
+
+```{r}
+litigant <- litigant %>% mutate(
+         txt_short = case_when(
+           appendix_1a == 0 &
+           grepl("APPENDIX A", txt_short) ~ 
+             gsub(pattern = "APPENDIX A.*", replacement = "", x = txt_short),
+           T ~ txt_short),
+         txt_short = str_squish(txt_short))
+```
+
+Checking to make sure `APPENDIX A` references have been removed.
+
+```{r}
+a <- litigant %>% filter(appendix_1a == 0) %>%
+  mutate(appendix_a = str_count(txt_short, "APPENDIX A"))
+
+table(a$appendix_a)
+```
+
+## Handling other forms of appendix
+
+```{r}
+litigant$appendix <- ifelse(litigant$appendix_1a < 1 & litigant$appendix_a < 1, 
+                            str_count(litigant$txt_short, "APPENDIX"), 0)
+
+table(litigant$appendix)
+```
+
+We want to manually look at some of the briefs that mention `APPENDIX` to see if they refer to the beginning of the appendix. None mention appendix more than once, so we can skip below.
+
+```{r}
+litigant %>% filter(appendix > 1) %>% select(id, appendix)
+```
+
+I manually checked all briefs with more than one reference of `APPENDIX` and the first instance of each is referring to the beginning of the appendix and I also randomly checked many briefs with only 1 reference so we can remove all text after this.
+
+```{r}
+litigant <- litigant %>% mutate(
+         txt_short = case_when(
+           appendix_1a == 0 & appendix_a == 0 &
+           grepl("APPENDIX", txt_short) ~ 
+             gsub(pattern = "APPENDIX.*", replacement = "", x = txt_short),
+           T ~ txt_short),
+         txt_short = str_squish(txt_short))
+```
+
+Checking to make sure `APPENDIX` references have been removed.
+
+```{r}
+a <- litigant %>% filter(appendix_1a == 0 & appendix_a == 0) %>%
+  mutate(appendix = str_count(txt_short, "APPENDIX"))
+
+table(a$appendix)
+```
+
+
+```{r}
+a <- litigant %>% filter(appendix_1a == 0 & appendix_a == 0 & appendix == 0) %>%
+  mutate(Appendix = str_count(txt_short, "Appendix"),
+         appendix_all = str_count(txt_short, "appendix"))
+
+table(a$Appendix)
+```
+
+There are 83 briefs remaining that mention `Appendix`.
+
+```{r}
+table(a$appendix_all)
+```
+
+There are 18 briefs remaining that mention `appendix`.
+
+In taking a further look at some of these briefs, there is not really a good pattern to remove the rest of the appendices at scale.
+
+# Removing Footnotes
+
+First we want to convert all the text to lower case.
+
+```{r}
+litigant <- litigant %>% mutate(txt_short = str_to_lower(txt_short))
+```
+
+Now we want to check the mentions of `footnotes` in the briefs.
+
+```{r}
+litigant <- litigant %>%
+  mutate(footnotes = str_count(txt_short, "footnotes"))
+
+table(litigant$footnotes)
+```
+
+There are 352 briefs that mention footnotes.
+
+After manual inspection, we noticed many instances of footnotes that refer to the actual footnotes section are `footnotes counsel of record` and `footnotes 1`. We want to check their mentions in the briefs.
+
+```{r}
+litigant <- litigant %>%
+  mutate(footnotes_cor = str_count(txt_short, "footnotes \\* counsel of record"),
+         footnotes_cor2 = str_count(txt_short, "footnotes fn \\* counsel of record"),
+         footnotes_1 = str_count(txt_short, "footnotes 1"))
+
+table(litigant$footnotes_cor)
+table(litigant$footnotes_cor2)
+```
+
+
+```{r}
+table(litigant$footnotes_1)
+```
+
+We want to remove instance of `footnotes counsel of record` or `footnotes 1` that are in the list of footnotes ids.
+
+```{r}
+litigant <- litigant %>% mutate(
+         txt_short = case_when(
+           grepl("footnotes \\* counsel of record", txt_short) ~ 
+             gsub(pattern = "footnotes \\* counsel of record.*", replacement = "", x = txt_short),
+            grepl("footnotes fn \\* counsel of record", txt_short) ~ 
+             gsub(pattern = "footnotes fn \\* counsel of record.*", replacement = "", x = txt_short),
+           grepl("footnotes 1", txt_short) ~ 
+             gsub(pattern = "footnotes 1.*", replacement = "", x = txt_short),
+           T ~ txt_short),
+         txt_short = str_squish(txt_short))
+```
+
+Checking to make sure `footnotes counsel of record` and `footnotes 1` references have been removed.
+
+```{r}
+a <- litigant %>%
+  mutate(footnotes_cor = str_count(txt_short, "footnotes counsel of record"),
+         footnotes_cor2 = str_count(txt_short, "footnotes \\* counsel of record"),
+         footnotes_1 = str_count(txt_short, "footnotes 1"))
+
+table(a$footnotes_1)
+```
+
+```{r}
+table(a$footnotes_cor)
+table(a$footnotes_cor2)
+```
+
+There also seems to be a pattern of `footnotes *` to reference the footnotes section. Let's see how many of this reference are in the briefs.
+
+```{r}
+litigant$footnotes_star <- ifelse(litigant$footnotes_cor < 1 & litigant$footnotes_1 < 1,
+                                str_count(litigant$txt_short, "footnotes \\*"), 0)
+
+table(litigant$footnotes_star)
+```
+
+There are 94 briefs that mention `footnotes *` where the footnotes have not yet been removed. We can remove all text after this string as well.
+
+```{r}
+litigant <- litigant %>% mutate(
+         txt_short = case_when(
+           grepl("footnotes \\*", txt_short) ~ 
+             gsub(pattern = "footnotes \\*.*", replacement = "", x = txt_short),
+           T ~ txt_short),
+         txt_short = str_squish(txt_short))
+```
+
+
+Checking to make sure `footnotes *` references have been removed.
+
+```{r}
+a <- litigant %>%
+  mutate(footnotes_star = str_count(txt_short, "footnotes \\*"))
+
+table(a$footnotes_star)
+```
+
+Now let's see how many remaining briefs mention footnotes.
+
+```{r}
+a <- litigant %>% filter(footnotes_cor == 0 & footnotes_1 == 0 & footnotes_star == 0 &
+                        appendix_1a == 0 & appendix_a == 0 & appendix == 0) %>% 
+  mutate(footnotes = str_count(txt_short, "footnotes"))
+
+table(a$footnotes)
+```
+
+There are 47 briefs remaining that mention `footnotes`.
+
+```{r}
+#saving these ids to a csv
+footnotes_not_removed <- a %>% filter(footnotes > 0) %>% select(id)
+
+#box_write(footnotes_not_removed,
+#          file_name = "footnotes-not-removed.csv",
+#          dir_id = 145990409196)
+```
+
+
+Now let's see how many remaining briefs mention appendices.
+
+```{r}
+a <- litigant %>% filter(appendix_1a == 0 & appendix_a == 0 & appendix == 0) %>% 
+   mutate(appendix_all = str_count(txt_short, "appendix"))
+
+table(a$appendix_all)
+```
+
+
+
+Now we want to save the new shortened version of the text into a csv.
+
+```{r}
+ litigant <- litigant %>% select(case, brief, id, brief_party, txt_short)
+ 
+ box_write(litigant,
+           file_name = "shortened-litigant-brief-text.csv",
+           dir_id = 162588272045)
+```
+

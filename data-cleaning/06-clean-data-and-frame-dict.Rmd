@@ -23,7 +23,7 @@ box_auth()
 
 # Purpose
 
-To clean the amicus text and the frame dictionary for searching.
+To clean the amicus and litigant text and the frame dictionary for searching.
 
 # Data
 
@@ -32,6 +32,13 @@ Amicus Text
 ```{r}
 # data/processed amicus files/shortened-amicus-text-vars.csv
 amicus <- box_read("946743626631", read_fun = readr::read_csv)
+```
+
+Litigant Text
+
+```{r}
+# data/processed litigant files/shortened-litigant-brief-text.csv
+litigant <- box_read("955499186926") %>% rename(text = txt_short)
 ```
 
 Frame terms
@@ -156,7 +163,6 @@ clean_text <- function(df) {
   df$text_clean <- sapply(df$text_clean, replace_white)
   
   return(df)
-  
 }
 
 amicus <- clean_text(amicus)
@@ -175,6 +181,57 @@ Save
 #box_write(amicus,
 #           file_name = "clean-shortened-amicus-text-vars.csv",
 #           dir_id = 145990409196)
+```
+
+# Litigant Brief Cleaning
+
+```{r}
+# fix characters on text
+litigant <- litigant %>% mutate(text_clean = fix_chars(text))
+
+# rmv urls
+litigant <- litigant %>%
+  mutate(text_clean = qdapRegex::rm_url(text_clean))
+
+# rmv proper names & replace w/underscores
+litigant <- litigant %>% as.data.frame()
+litigant <- DataCombine::FindReplace(data = litigant, Var = "text_clean", 
+                         replaceData = proper_names, 
+                         from = "word", to = "replacement", exact = FALSE)
+
+# rmv "the fact that" & "in fact"
+litigant <- litigant %>% mutate(text_clean = gsub("the fact that|in fact", "", text_clean))
+
+# rmv facts & reports in specific cases
+litigant <- litigant %>%
+  mutate(
+    text_clean = case_when(
+      case == "City of Akron v Akron Center" ~ 
+        gsub(pattern = "fact |facts ", replacement = "", x = text_clean, ignore.case = T),
+      case %in% c("Planned Parenthood Assoc of Kansas City, MO v Ashcroft, Attorn Gen of MO",
+                  "Thornburgh v. American College of OBGYNs") ~
+        gsub(pattern = "report|reports|reporting|reported", replacement = "", x = text_clean, ignore.case = T),
+      TRUE ~ text_clean
+    )
+  )
+
+# clean text
+litigant <- clean_text(litigant)
+
+# save only necessary cols
+litigant <- litigant %>% select(case:brief_party, text_clean)
+
+# check no NAs
+litigant %>% filter(is.na(text_clean))
+```
+
+
+Save
+
+```{r}
+box_write(litigant,
+           file_name = "clean-shortened-litigant-text.csv",
+           dir_id = 162588272045)
 ```
 
 

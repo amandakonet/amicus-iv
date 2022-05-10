@@ -45,6 +45,14 @@ case_folders <- box_ls() %>%
 case_folders %>% head(1)
 ```
 
+If only getting specific folder, change here
+
+```{r}
+#case_folders <- case_folders %>% filter(case == "Gonzales v PP")
+```
+
+
+
 For all of the folders, retrieve every file name and ID. 
 
 ```{r}
@@ -130,7 +138,7 @@ amicus_file_ids <- amicus_file_ids %>%
   mutate(file_type = tolower(sub(".*\\.", "", name))) 
 amicus_file_ids %>% group_by(file_type) %>% summarize(n = n())
 ```
-
+Scrape text
 
 ```{r}
 # create iterator 
@@ -220,6 +228,13 @@ Final column names
 
 ```{r}
 amicus_txt %>% colnames()
+```
+
+If adding in briefs, run below
+
+```{r}
+#full <- box_read("1029611016764")
+#full <- full %>% rbind(amicus_txt) %>% arrange(case)
 ```
 
 

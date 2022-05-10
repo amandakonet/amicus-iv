@@ -22,7 +22,7 @@ library(doParallel)
 
 # Purpose
 
-There are ~40 folders in Supreme Court > Sup Ct - Abortion Cases. For each amicus file (NOT denoted by files with "amicus”, “amici”, “decision”, “reply”, “appendix”, and “oral” in the file name), copy the file ID, file name, case name, and file text into a CSV.
+There are ~40 folders in Supreme Court > Sup Ct - Abortion Cases. For each litigant file (NOT denoted by files with "amicus”, “amici”, “decision”, “reply”, “appendix”, and “oral” in the file name), copy the file ID, file name, case name, and file text into a CSV.
 
 
 # 1. Obtain file names and IDs
@@ -81,7 +81,7 @@ all_file_names <- function(case_folder_ids) {
             .inorder = F) %dopar% {
               i %>%
                 filter(!grepl("amicus|amici|decision|reply|appendix|oral", name, ignore.case = T)) %>%
-                select(case, name, id)
+                select(case, name, id, type)
             }
   print("Obtained litigant file ids")
   
@@ -103,19 +103,26 @@ litigant_file_ids %>%
   right_join(., case_folders, "case") %>% 
   group_by(case) %>% 
   summarize(n = sum(!grepl("amicus|amici|decision|reply|appendix|oral", name, ignore.case = T))) %>% 
-  arrange(case) #%>% 
-  #box_write(., "amicus brief counts.xlsx", dir_id = "145990409196")
+  arrange(case)
 ```
 
-Save list of amicus file IDs on Box
+Save list of litigant file IDs on Box
 
 ```{r}
-# amicus_file_ids %>% 
-#   right_join(., case_folders, "case") %>% 
-#   select(-id.y) %>% 
-#   rename(id = id.x) %>% 
-#   mutate(file_type = tolower(sub(".*\\.", "", name))) %>% 
-#   box_write(., "amicus-file-ids.csv", dir_id = "145990409196")
+#litigant_file_ids %>% 
+  # only files
+#  filter(type == "file", name != ".DS_Store") %>% 
+  # add matching case
+#  right_join(., case_folders, "case") %>% 
+  # rename ids/type
+#  select(-id.y, -type.y) %>% 
+#  rename(id = id.x, type = type.x) %>% 
+  # name lower
+#  mutate(file_type = tolower(sub(".*\\.", "", name))) %>% 
+  # select final vars
+#  select(case, id, name, type) %>% 
+#  arrange(case) %>% 
+#  box_write(., "litigant-brief-file-ids.xlsx", dir_id = "162588272045")
 ```
 
 
@@ -130,11 +137,17 @@ litigant_file_ids <- litigant_file_ids %>%
   mutate(file_type = tolower(sub(".*\\.", "", name))) 
 litigant_file_ids %>% group_by(file_type) %>% summarize(n = n())
 ```
+Filter for only pdf and docx files 
 
 ```{r}
 litigant_file_ids <- litigant_file_ids %>% filter(file_type == 'docx' | file_type == 'pdf')
+
+# filter for only briefs that need to be re-pulled
+litigant_file_ids <- litigant_file_ids %>% 
+  filter(id %in% c("955405762992", "955404304453", "955405038378", "955401734984", "56699188926", "56701967150","56698341318"))
 ```
 
+Read text
 
 ```{r}
 # create iterator 
@@ -145,7 +158,7 @@ n_cores <- detectCores() - 1
 registerDoParallel(n_cores)
 
 # get text of cases in parallel
-amicus_txt <- foreach(i = itd, .inorder = F, .combine = rbind) %dopar% {
+litigant_txt <- foreach(i = itd, .inorder = F, .combine = rbind) %dopar% {
   
   # get id and file type of current file
   id <- i %>% pull(id)
@@ -200,38 +213,74 @@ amicus_txt <- foreach(i = itd, .inorder = F, .combine = rbind) %dopar% {
 doParallel::stopImplicitCluster()
 ```
 
+
+
+Read in list of litigant file IDs, drop those that are marked "drop"
+
+```{r}
+drop_file_ids <- box_read("955323576728") %>% 
+  filter(drop == 1, !is.na(id)) %>% 
+  select(id)
+
+litigant_txt <- litigant_txt %>% filter(!(id %in% drop_file_ids$id))
+```
+
 Check that our files contain "summary of (the) argument: this is the phrase that indicates the start of the text we want to analyze.
 
 ```{r}
-# amicus_txt %>% 
-#   mutate(txt_full = str_squish(txt_full),
-#          summary = grepl("summary of argument|summary of the argument", txt_full, ignore.case = T)) %>%
-#   group_by(summary) %>% 
-#   summarize(n=n())
+litigant_txt %>% 
+   mutate(txt_full = str_squish(txt_full),
+          summary = grepl("summary of argument|summary of the argument", txt_full, ignore.case = T)) %>%
+   group_by(summary) %>% 
+   summarize(n=n())
 ```
 
-Which files do not? -- should just be the 3 that we have manual adjustments recorded for.
+Which files do not? -- should just be the 3 that we have manual adjustments recorded for. These have been manually changed/corrected.
 
 ```{r}
-# amicus_txt %>% 
-#   mutate(txt_full = str_squish(txt_full),
-#          summary = grepl("summary of argument|summary of the argument", txt_full, ignore.case = T)) %>%
-#   filter(!summary) %>% 
-#   select(brief)
+ litigant_txt %>% 
+   mutate(txt_full = str_squish(txt_full),
+          summary = grepl("summary of argument|summary of the argument", txt_full, ignore.case = T)) %>%
+   filter(!summary) %>% 
+   select(brief)
 ```
 
-Final column names
+
+Add column for party
 
 ```{r}
-amicus_txt %>% colnames()
+litigant_txt <- litigant_txt %>% 
+  mutate(brief_party = ifelse(grepl("\\(feminist\\)", brief, ignore.case=T), 1, 0)) %>% 
+  select(case:id, brief_party, txt_full)
 ```
+
+Check colnames 
+```{r}
+litigant_txt %>% colnames()
+```
+
+
+If adding cases adhoc, join now
+
+```{r}
+litigant_all <- box_read("955333134918") %>%
+  filter(!(brief %in% c("Bellotti v Baird (1976). Brief for Appellees (feminist).docx",
+                       "Colautti v. Franklin. Brief for Respondent (Feminist) - (labeled Beal v Franklin).pdf",
+                       "Doe v. Bolton Brief for Petitioners (Feminist).pdf",
+                       "Doe v. Bolton Brief for Respondents.pdf",
+                       "H.L. v Matheson. Brief for Appellant (feminist).docx",
+                       "United States v Vuitch. Brief for Appellant %28United States%29.docx",
+                       "United States v. Vuitch. Brief for Respondent (Feminist).pdf"))) %>% 
+  rbind(litigant_txt)
+```
+
 
 
 # 3. Write file to Box
 
 ```{r}
-box_write(amicus_txt,
+box_write(litigant_txt,
           file_name = "raw-litigant-brief-text.csv",
-          dir_id = '145990409196')
+          dir_id = '162588272045')
 ```
 

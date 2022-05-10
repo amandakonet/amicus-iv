@@ -1,0 +1,233 @@
+---
+title: "Generate Frame Measures"
+author: "Amanda Konet"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T, warning = F, message = F, error = F)
+library(tidyverse)
+library(tidytext)
+library(textclean)
+library(tm)
+library(stringi)
+library(quanteda)
+
+library(boxr)
+box_auth()
+```
+
+
+# Purpose
+
+To develop litigant- and frame-level measures of frame usage
+
+# Data
+
+Abortion frame terms:
+
+```{r}
+frame_terms <- box_read("947335700912", read_fun = readr::read_csv)
+```
+
+Litigant data:
+
+```{r}
+# data/processed litigant files/clean-shortened-litigant-brief-text.csv
+litigant <- box_read("955397555840") %>% 
+  mutate(id = as.character(id)) %>% 
+  mutate(brief_party = ifelse(id %in% c("955405762992", "199347141448", "56697932358", "296368043832"), 1, brief_party))
+```
+
+
+# Litigant-Level Measures
+
+Start by creating corpus 
+
+
+```{r}
+litigant_corp <- litigant$text_clean %>% corpus()
+
+# Add meta data to corpus
+docvars(litigant_corp, "case") <- litigant$case
+docvars(litigant_corp, "brief") <- litigant$brief
+docvars(litigant_corp, "id") <- litigant$id
+docvars(litigant_corp, "brief_party") <- litigant$brief_party
+
+summary(litigant_corp) %>% head()
+```
+
+
+## Create frame dictionary
+
+This dictionary will be used to filter out frame words from paragraphs when counting word frequency. 
+
+```{r}
+# Remove duplicates
+frame_terms <- frame_terms %>%
+  select(frame_code, word_clean) %>% 
+  unique()
+
+# Get words associated with frames
+get_frames <- function(frame){ 
+  frame_terms %>%
+    filter(frame_code == frame) %>% 
+    select(word_clean)
+  }
+
+# Initialize list
+search_frames <- list()
+
+# Get unique frames
+frames <- unique(frame_terms$frame_code)
+
+# Pull words for each frame and save in list
+for(i in 1:length(frames)){ 
+  search_frames[i] <- get_frames(frames[i])
+}
+
+# Name items in list
+names(search_frames) <- frames
+
+frame_dict <- dictionary(search_frames)
+
+# Check output
+#frame_dict
+```
+
+# Look up frames
+
+**Note on arguments in `tokens()` function**: removing punctuation and numbers from terms increases counts. 
+
+```{r}
+# Tokenize briefs
+toks <- tokens(litigant_corp, remove_punct = TRUE, remove_numbers = TRUE)
+```
+
+## Create brief summary statistics
+
+The `litigant_corp_summary` data frame contains the summary statistics of all the briefs in our corpus, `litigant_corp`. The one thing it's missing is the number of tokens (i.e. words) in each brief. 
+
+```{r}
+# Generate summary of litigantCorp
+litigant_corp_summary <- summary(object = litigant_corp, 
+                      n = nrow(litigant), # default is 100, we need all observations 
+                      showmeta = TRUE) %>% # add meta data to summary
+  as.data.frame() 
+
+# check
+tail(litigant_corp_summary)
+```
+
+
+Calculate total number of words in each brief. Join with the litigant_corp_summary
+
+```{r}
+# Total number of tokens (before pulling frame words)
+nToks <- data.frame(Text = names(ntoken(toks)), 
+                     word_ct = ntoken(toks))
+
+# Look at first 6 observations
+head(nToks)
+```
+
+```{r}
+litigant_info <- litigant_corp_summary %>%
+  left_join(nToks, by = c("Text")) %>% 
+  rename(doc_id=Text)
+
+head(litigant_info)
+```
+
+## Generate frame frequencies
+
+Now that we've created our `litigant_info` data frame, it's time to generate the frame frequencies.
+
+(# of words/phrases for a particular frame) / (# of all words in the brief)
+
+
+```{r}
+# Search for frames
+litigant_dfm <- tokens_lookup(toks, dictionary = frame_dict, nested_scope = "dictionary",
+                         case_insensitive = FALSE, valuetype = "fixed") %>% dfm()
+
+# Generate raw frequencies
+litigant_frames_raw <- litigant_dfm %>%
+  convert(to = "data.frame") %>%
+  left_join(litigant_info, by = "doc_id") %>% 
+  janitor::clean_names()
+
+# Check out first 6 observations 
+head(litigant_frames_raw, 10)
+```
+
+Get frame frequencies - These are calculated by dividing the frame count by the word count. 
+
+```{r}
+# Generate frame frequencies 
+litigant_frames_freq <- litigant_frames_raw %>% 
+  pivot_longer(c(abortion_different:womens_rights),
+               names_to = "frame", values_to = "frame_ct") %>% 
+  mutate(frame_freq = frame_ct/word_ct) %>% 
+  select(-frame_ct, -word_ct) %>% 
+  pivot_wider(names_from = "frame", values_from = frame_freq)
+
+litigant_frames_freq %>% head(10)
+```
+
+## Raw counts + freq
+
+Dataframe with raw counts and frequencies
+
+```{r}
+litigant_frames <- litigant_frames_raw %>% 
+  select(doc_id:womens_rights, word_ct) %>% 
+  left_join(., litigant_frames_freq, 
+            by = c("doc_id"), 
+            suffix = c("_raw", "_freq")) %>% 
+  select(-c(types:sentences)) %>% 
+  select(case:brief_party, word_ct, sort(colnames(.))) %>% 
+  janitor::clean_names()
+
+litigant_frames %>% head(10)
+```
+
+Save
+
+```{r}
+box_write(litigant_frames,
+           file_name = "litigant-level-frame-measures.csv",
+           dir_id = 162601154573)
+```
+
+
+
+# Case-Level Measures
+
+We already have case-level measures. Just reorganize data for one row per case
+
+```{r}
+fem_frames <- litigant_frames %>% filter(brief_party == 1) %>% 
+  rename_with(., .fn = ~ paste0("fem_", .x), contains("freq")|contains("raw")) %>% 
+  select(case, contains("fem"))
+opp_frames <- litigant_frames %>% filter(brief_party == 0) %>% 
+  rename_with(., .fn = ~ paste0("opp_", .x), contains("freq")|contains("raw")) %>% 
+  select(case, contains("opp"))
+
+case_frames <- fem_frames %>% full_join(., opp_frames, by = "case")
+```
+
+
+
+Save
+
+```{r}
+box_write(case_frames,
+           file_name = "case-level-frame-measures.csv",
+           dir_id = 162601154573)
+```
+
+
+

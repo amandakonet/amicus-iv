@@ -22,8 +22,7 @@ brief_info <- box_read("936715223606")
 
 # data/processed amicus files/amicus_clean_512_no_stride.csv
 amicus_party <- box_read("942789542605") %>% select(id, brief_party) %>% distinct(id, brief_party)
-# data/processed_amicus_files/amicus_clean_512_no_stride_split.csv
-#amicus <- box_read("946701865033")
+
 # data/processed_amicus_files/shortened_amicus_brief_text.csv
 amicus <- box_read("910635411098")
 
