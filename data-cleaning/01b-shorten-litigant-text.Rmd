@@ -337,7 +337,7 @@ table(a$appendix_all)
 Now we want to save the new shortened version of the text into a csv.
 
 ```{r}
- litigant <- litigant %>% select(case, brief, id, brief_party, txt_short)
+ litigant <- litigant %>% select(case, brief, id, brief_party, txt_short) %>% arrange(case)
  
  box_write(litigant,
            file_name = "shortened-litigant-brief-text.csv",

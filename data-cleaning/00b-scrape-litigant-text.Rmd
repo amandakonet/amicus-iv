@@ -145,7 +145,8 @@ litigant_file_ids <- litigant_file_ids %>% filter(file_type == 'docx' | file_typ
 # filter for only briefs that need to be re-pulled
 litigant_file_ids <- litigant_file_ids %>% 
   #filter(id %in% c("955405762992", "955404304453", "955405038378", "955401734984", "56699188926", "56701967150","56698341318"))
-  filter(id == "861821337076")
+  #filter(id == "861821337076")
+  filter(id == "955826247752")
 ```
 
 Read text
@@ -252,6 +253,7 @@ Add column for party
 ```{r}
 litigant_txt <- litigant_txt %>% 
   mutate(brief_party = ifelse(grepl("\\(feminist\\)", brief, ignore.case=T), 1, 0)) %>% 
+  mutate(brief_party = ifelse(id %in% c("955405762992", "199347141448", "56697932358", "296368043832"), 1, brief_party)) %>% 
   select(case:id, brief_party, txt_full)
 ```
 
