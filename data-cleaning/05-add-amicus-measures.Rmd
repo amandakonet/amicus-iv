@@ -21,13 +21,14 @@ library(janitor)
 brief_info <- box_read("936715223606")
 
 # data/processed amicus files/amicus_clean_512_no_stride.csv
-amicus_party <- box_read("942789542605") %>% select(id, brief_party) %>% distinct(id, brief_party)
+amicus_party <- box_read("942789542605") %>% select(id, brief_party) %>% distinct(id, brief_party) %>% 
+  mutate(id = as.character(id))
 
 # data/processed_amicus_files/shortened_amicus_brief_text.csv
-amicus <- box_read("910635411098")
+amicus <- box_read("910635411098") %>% mutate(id = as.character(id))
 
 # data/processed amicus files/walkover_brief_names.csv
-walkover <- box_read("941154488137")
+walkover <- box_read("941154488137") %>% mutate(new_id = as.character(new_id))
 ```
 
 
@@ -54,7 +55,10 @@ brief_info <- brief_info %>% filter(`Row Type` == 'Amicus Brief') %>% select(Cas
 
 # change june v russo to case id = 999999
 brief_info <- brief_info %>%
-  mutate(Case = ifelse(is.na(Case), "999999", Case))
+  mutate(Case = ifelse(is.na(Case), "999999", Case)) %>% 
+  mutate(`Amicus Brief` = ifelse(`Amicus Brief` == "Stenberg v Carhart. Amics Brief for Petitioner by Agudath Israel of America.docx",
+                                 "Stenberg v Carhart. Amicus Brief for Petitioner by Agudath Israel of America.docx",
+                                 `Amicus Brief`))
 
 #impute all na with 0
 brief_info[is.na(brief_info)] = 0
@@ -66,15 +70,19 @@ Join to amicus data
 ```{r}
 walkover$case_code <-  as.character(walkover$case_code)
 walk_measures <- walkover %>%
-  left_join(brief_info, by = c("case_code" = "Case", "brief_code" = "amicus_id"))
+  left_join(brief_info, by = c("case_code" = "Case", "brief_code" = "amicus_id")) %>% 
+  mutate(new_id = ifelse(old_id == "592236091833", "861822172835", new_id),
+         name_correct = ifelse(old_id == "592236091833", "Stenberg v Carhart. Amicus Brief for Petitioner by Agudath Israel of America.docx", name_correct))
 
 amicus <- amicus %>% left_join(walk_measures, by = c("id" = "new_id"))
 ```
 
+
 If using shortened text file, add in brief_party 
 
 ```{r}
-amicus <- amicus %>% left_join(., amicus_party, by = "id")
+amicus <- amicus %>% left_join(., amicus_party, by = "id") %>% 
+  mutate(brief_party = ifelse(id == "861822172835", 0, brief_party))
 ```
 
 
@@ -85,7 +93,6 @@ final <- amicus %>%
   select(case, id, brief, brief_party, forgau:sgauo, text = txt_short) %>% 
   janitor::clean_names()
 ```
-
 
 Check 
 

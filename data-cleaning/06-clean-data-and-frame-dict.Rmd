@@ -178,9 +178,9 @@ amicus %>% filter(is.na(text_clean))
 Save
 
 ```{r}
-#box_write(amicus,
-#           file_name = "clean-shortened-amicus-text-vars.csv",
-#           dir_id = 145990409196)
+box_write(amicus,
+           file_name = "clean-shortened-amicus-text-vars.csv",
+           dir_id = 145990409196)
 ```
 
 # Litigant Brief Cleaning

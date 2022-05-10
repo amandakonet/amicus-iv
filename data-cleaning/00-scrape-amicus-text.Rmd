@@ -96,7 +96,7 @@ all_file_names <- function(case_folder_ids) {
   return(file_ids)
 }
 
-# run the function for Abortion and Sex Discrim folders
+# run the function for Abortion folders
 amicus_file_ids <- all_file_names(case_folders)
 
 doParallel::stopImplicitCluster()
@@ -138,6 +138,14 @@ amicus_file_ids <- amicus_file_ids %>%
   mutate(file_type = tolower(sub(".*\\.", "", name))) 
 amicus_file_ids %>% group_by(file_type) %>% summarize(n = n())
 ```
+
+If only need to scrape briefs ad hoc, filter now
+
+```{r}
+amicus_file_ids <- amicus_file_ids %>% filter(id == "861822172835")
+```
+
+
 Scrape text
 
 ```{r}
@@ -233,15 +241,15 @@ amicus_txt %>% colnames()
 If adding in briefs, run below
 
 ```{r}
-#full <- box_read("1029611016764")
-#full <- full %>% rbind(amicus_txt) %>% arrange(case)
+full <- box_read("863216279471")
+full <- full %>% rbind(amicus_txt) %>% arrange(case)
 ```
 
 
 # 3. Write file to Box
 
 ```{r}
-box_write(amicus_txt,
+box_write(full,
           file_name = "raw-amicus-brief-text.csv",
           dir_id = '145990409196')
 ```

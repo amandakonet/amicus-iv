@@ -27,10 +27,10 @@ There are ~40 folders in Supreme Court > Sup Ct - Abortion Cases. For each litig
 
 # 1. Obtain file names and IDs
 
-Set working directory to  files folder
+Set working directory to litigant/amicus files folder
 
 ```{r}
-box_setwd("6932017842")
+box_setwd("146066009084")
 ```
 
 Get IDs of all the case folders
@@ -144,7 +144,8 @@ litigant_file_ids <- litigant_file_ids %>% filter(file_type == 'docx' | file_typ
 
 # filter for only briefs that need to be re-pulled
 litigant_file_ids <- litigant_file_ids %>% 
-  filter(id %in% c("955405762992", "955404304453", "955405038378", "955401734984", "56699188926", "56701967150","56698341318"))
+  #filter(id %in% c("955405762992", "955404304453", "955405038378", "955401734984", "56699188926", "56701967150","56698341318"))
+  filter(id == "861821337076")
 ```
 
 Read text
@@ -264,13 +265,13 @@ If adding cases adhoc, join now
 
 ```{r}
 litigant_all <- box_read("955333134918") %>%
-  filter(!(brief %in% c("Bellotti v Baird (1976). Brief for Appellees (feminist).docx",
-                       "Colautti v. Franklin. Brief for Respondent (Feminist) - (labeled Beal v Franklin).pdf",
-                       "Doe v. Bolton Brief for Petitioners (Feminist).pdf",
-                       "Doe v. Bolton Brief for Respondents.pdf",
-                       "H.L. v Matheson. Brief for Appellant (feminist).docx",
-                       "United States v Vuitch. Brief for Appellant %28United States%29.docx",
-                       "United States v. Vuitch. Brief for Respondent (Feminist).pdf"))) %>% 
+  #filter(!(brief %in% c("Bellotti v Baird (1976). Brief for Appellees (feminist).docx",
+  #                     "Colautti v. Franklin. Brief for Respondent (Feminist) - (labeled Beal v Franklin).pdf",
+  #                     "Doe v. Bolton Brief for Petitioners (Feminist).pdf",
+  #                     "Doe v. Bolton Brief for Respondents.pdf",
+  #                     "H.L. v Matheson. Brief for Appellant (feminist).docx",
+  #                     "United States v Vuitch. Brief for Appellant %28United States%29.docx",
+  #                     "United States v. Vuitch. Brief for Respondent (Feminist).pdf"))) %>% 
   rbind(litigant_txt)
 ```
 
@@ -279,7 +280,7 @@ litigant_all <- box_read("955333134918") %>%
 # 3. Write file to Box
 
 ```{r}
-box_write(litigant_txt,
+box_write(litigant_all,
           file_name = "raw-litigant-brief-text.csv",
           dir_id = '162588272045')
 ```
