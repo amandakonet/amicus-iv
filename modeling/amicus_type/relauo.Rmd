@@ -1,5 +1,5 @@
 ---
-title: "Relauo Amicus Brief Models"
+title: "relauo Amicus Brief Models"
 author: "Amanda Konet"
 date: "`r Sys.Date()`"
 output: pdf_document
@@ -10,9 +10,9 @@ knitr::opts_chunk$set(echo = F)
 
 library(tidyverse)
 library(lme4)
+library(boxr)
 library(kableExtra)
 library(broom.mixed)
-library(boxr)
 box_auth()
 
 amicus_only <- "948366662469"
@@ -33,19 +33,16 @@ data <- box_read(final_cases) %>%
          nonftyp2 = as.factor(nonftyp2),
          lcdisdirfem = ifelse(lcdisdirfem==1, 0, 1),
          lcdisdirfem = as.factor(lcdisdirfem),
+         #sgfem3 = as.factor(sgfem3), 
          cirsplit = as.factor(cirsplit)) %>% 
-  mutate(across(c(relauo_abortion_different:relauo_womens_rights), ~replace_na(.x, 0)))
-```
+  mutate(across(c(relauo_abortion_different:relauo_womens_rights), ~replace_na(.x, 0))) %>% 
+  filter(case != "Gonzales v PP")
 
-
-
-Add Case ID-- this will be the second level var
-
-```{r}
+# add case ID (second level var)
 case_ids <- data %>% distinct(case) %>% arrange(case) %>% mutate(id = 1:n())
 data <- case_ids %>% left_join(., data, by = "case")
-#data %>% head(1) %>% select(case:justicefem)
 ```
+
 
 
 # Scale Data
@@ -54,15 +51,15 @@ Remove cols where all values are NA. Not sure if we will do this or not in model
 
 ```{r}
 data <- data %>%
-  select(case:cirsplit, poppam, relauo_abortion_different:relauo_womens_rights) %>% 
-  mutate(across(c(where(is.numeric), -justicevot, -id, -cirsplit),
+  select(case:cirsplit, poppam, relauo_abortion_different:relauo_womens_rights) %>%  
+  mutate(across(c(where(is.numeric), -justicevot, -id, -cirsplit, -sgfem3),
                 ~(scale(., center=T, scale=T))))
                 #~(scale(., center=T, scale=T) %>% as.vector)))
 
 total_cols <- data %>% select(contains('relauo')) %>% colnames()
 data <- janitor::remove_empty(data, which = "cols")
 remaining_cols <- data %>% select(contains('relauo')) %>% colnames()
-setdiff(total_cols, remaining_cols)
+#setdiff(total_cols, remaining_cols)
 ```
 
 
@@ -105,41 +102,11 @@ womens_rights
 
 The following frames are significant: 
 
-* 0: 
+* 0:
 * 0.01:
-* 0.05: abortion regret
-* 0.10: evidence
-* 0.20: bad law, compulsory motherhood, women's health
-
-
-\newpage
-
-# Abortion different
-
-```{r}
-mod1 <- glmer(justicevot ~
-                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                relauo_abortion_different + poppam,
-              family = binomial, data = data,  
-              nAGQ = 0, control=glmerControl(
-                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
-
-tidy(mod1,conf.int=F,exponentiate=T,effects="fixed") %>% 
-  mutate(across(where(is.numeric), ~round(.x, 4))) %>% 
-  mutate(probability_yes = round(estimate/(1+estimate),4)) %>% 
-  mutate(confidence = case_when(
-    p.value >= 0 & p.value <= 0.001 ~ "***", 
-    p.value > 0.001 & p.value <= 0.01 ~ "**",
-    p.value > 0.01 & p.value <= 0.05 ~ "*",
-    p.value > 0.05 & p.value <= 0.1 ~ ".",
-    T ~ ""
-  )) %>% 
-  rename(odds_ratio = estimate) %>% 
-  select(term, odds_ratio, p_value = p.value, confidence) %>% 
-  kable()
-
-summary(mod1)
-```
+* 0.05: abortion regret (+)
+* 0.10: evidence (+)
+* 0.20: bad law (+), women's health (+)
 
 
 \newpage
@@ -149,8 +116,8 @@ summary(mod1)
 
 ```{r}
 mod3 <- glmer(justicevot ~
-                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                relauo_abortion_regret + poppam,
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam +
+                relauo_abortion_regret,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -180,8 +147,8 @@ summary(mod3)
 
 ```{r}
 mod4 <- glmer(justicevot ~
-                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                relauo_bad_law + poppam,
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + 
+                relauo_bad_law,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -206,72 +173,12 @@ summary(mod4)
 
 \newpage
 
-# Comp Motherhood
-
-```{r}
-mod6a <- glmer(justicevot ~
-                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                relauo_compulsory_motherhood + poppam,
-              family = binomial, data = data,  
-              nAGQ = 1, control=glmerControl(
-                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
-
-tidy(mod6a,conf.int=F,exponentiate=T,effects="fixed") %>% 
-  mutate(across(where(is.numeric), ~round(.x, 4))) %>% 
-  mutate(probability_yes = round(estimate/(1+estimate),4)) %>% 
-  mutate(confidence = case_when(
-    p.value >= 0 & p.value <= 0.001 ~ "***", 
-    p.value > 0.001 & p.value <= 0.01 ~ "**",
-    p.value > 0.01 & p.value <= 0.05 ~ "*",
-    p.value > 0.05 & p.value <= 0.1 ~ ".",
-    T ~ ""
-  )) %>% 
-  rename(odds_ratio = estimate) %>% 
-  select(term, odds_ratio, p_value = p.value, confidence) %>% 
-  kable()
-
-summary(mod6a)
-```
-
-
-\newpage
-
-# Compulsory Motherhood II
-
-```{r}
-mod6b <- glmer(justicevot ~
-                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                relauo_compulsory_motherhood_ii + poppam,
-              family = binomial, data = data,  
-              nAGQ = 0, control=glmerControl(
-                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
-
-tidy(mod6b,conf.int=F,exponentiate=T,effects="fixed") %>% 
-  mutate(across(where(is.numeric), ~round(.x, 4))) %>% 
-  mutate(probability_yes = round(estimate/(1+estimate),4)) %>% 
-  mutate(confidence = case_when(
-    p.value >= 0 & p.value <= 0.001 ~ "***", 
-    p.value > 0.001 & p.value <= 0.01 ~ "**",
-    p.value > 0.01 & p.value <= 0.05 ~ "*",
-    p.value > 0.05 & p.value <= 0.1 ~ ".",
-    T ~ ""
-  )) %>% 
-  rename(odds_ratio = estimate) %>% 
-  select(term, odds_ratio, p_value = p.value, confidence) %>% 
-  kable()
-
-summary(mod6b)
-```
-
-
-\newpage
-
 # Evidence
 
 ```{r}
 mod9 <- glmer(justicevot ~
-                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                relauo_evidence + poppam,
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + 
+                relauo_evidence,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -293,14 +200,43 @@ tidy(mod9,conf.int=F,exponentiate=T,effects="fixed") %>%
 summary(mod9)
 ```
 
+\newpage 
 
+# Fetus
+
+```{r}
+mod11 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + 
+                relauo_fetus,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+tidy(mod11,conf.int=F,exponentiate=T,effects="fixed") %>% 
+  mutate(across(where(is.numeric), ~round(.x, 4))) %>% 
+  mutate(probability_yes = round(estimate/(1+estimate),4)) %>% 
+  mutate(confidence = case_when(
+    p.value >= 0 & p.value <= 0.001 ~ "***", 
+    p.value > 0.001 & p.value <= 0.01 ~ "**",
+    p.value > 0.01 & p.value <= 0.05 ~ "*",
+    p.value > 0.05 & p.value <= 0.1 ~ ".",
+    T ~ ""
+  )) %>% 
+  rename(odds_ratio = estimate) %>% 
+  select(term, odds_ratio, p_value = p.value, confidence) %>% 
+  kable()
+
+summary(mod11)
+```
+
+\newpage
 
 # Final Authority
 
 ```{r}
 mod12 <- glmer(justicevot ~
-                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                relauo_final_authority + poppam,
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam +
+                relauo_final_authority,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -329,8 +265,8 @@ summary(mod12)
 
 ```{r}
 mod14 <- glmer(justicevot ~
-                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                relauo_morality_religion + poppam,
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + 
+                relauo_morality_religion,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -358,8 +294,8 @@ summary(mod14)
 
 ```{r}
 mod15 <- glmer(justicevot ~
-                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                relauo_overturn_roe + poppam,
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam +
+                relauo_overturn_roe,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -383,13 +319,12 @@ summary(mod15)
 
 \newpage
 
-
 # Privacy
 
 ```{r}
 mod18 <- glmer(justicevot ~
-                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                relauo_privacy + poppam,
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + 
+                relauo_privacy,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -418,8 +353,8 @@ summary(mod18)
 
 ```{r}
 mod20 <- glmer(justicevot ~
-                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                relauo_standing + poppam,
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam +
+                relauo_standing,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -448,8 +383,8 @@ summary(mod20)
 
 ```{r}
 mod22 <- glmer(justicevot ~
-                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                relauo_uncertainty + poppam,
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + 
+                relauo_uncertainty,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -477,8 +412,8 @@ summary(mod22)
 
 ```{r}
 mod23 <- glmer(justicevot ~
-                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                relauo_undue_burden + poppam,
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + 
+                relauo_undue_burden,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -506,8 +441,8 @@ summary(mod23)
 
 ```{r}
 mod24 <- glmer(justicevot ~
-                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                relauo_untruthful + poppam,
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + 
+                relauo_untruthful,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -536,8 +471,8 @@ summary(mod24)
 
 ```{r}
 mod25 <- glmer(justicevot ~
-                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                relauo_womens_future_life + poppam,
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam +
+                relauo_womens_future_life,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -565,8 +500,8 @@ summary(mod25)
 
 ```{r}
 mod26 <- glmer(justicevot ~
-                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                relauo_womens_health + poppam,
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + 
+                relauo_womens_health,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -594,8 +529,8 @@ summary(mod26)
 
 ```{r}
 mod27 <- glmer(justicevot ~
-                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem +
-                relauo_womens_rights + poppam,
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + 
+                relauo_womens_rights,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
