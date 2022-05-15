@@ -35,7 +35,8 @@ data <- box_read(final_cases) %>%
          justicefem = as.factor(justicefem),
          cirsplit = as.factor(cirsplit),
          nonftyp2 = as.factor(nonftyp2)) %>% 
-  mutate(across(c(aclauf_abortion_different:sgauo_womens_rights), ~replace_na(.x, 0)))
+  mutate(across(c(aclauf_abortion_different:sgauo_womens_rights), ~replace_na(.x, 0))) %>% 
+  filter(case != "Gonzales v PP")
 ```
 
 Add Case ID-- this will be the second level var
@@ -69,9 +70,7 @@ calc_ICC <-function(Model.Name) {
 calc_ICC(resnull)
 ```
 
-
-
-# Base Model (lcdisdirfem)
+# Base Model 0 (w/ lcdisdirfem)
 
 (1 | group) + predictors = random intercept for each level in the group
 (0 | group) + predictors = fixed intercept 
@@ -84,7 +83,7 @@ and this equation, but one $$\beta_1 = \gamma_{10}$$
 
 ```{r}
 base_mod <- glmer(justicevot ~
-                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem,
+                (1|id) + justicemq + justicefem + lcdisdirfem,
               family = binomial, data = data,  
               nAGQ = 1, control=glmerControl(
                 check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
@@ -95,6 +94,33 @@ ICC for base model
 
 ```{r}
 calc_ICC(base_mod)
+```
+
+
+# Base Model 1 (w/ nonftyp2 & lcdisdirfem)
+
+(1 | group) + predictors = random intercept for each level in the group
+(0 | group) + predictors = fixed intercept 
+(1 | group) + (1 | predictor) + predictors = random intercept and random slope for predictor. the remaining predictors are fixed.
+
+Here, we use justicevot ~ (1 | id) + predictors. This means we want a random intercept that changes for each justice. The formula would be: $$justicevot_{ij} = \beta_{0j} + \beta_1(justicemq_{ij}) +...+\epsilon_{ij}$$ 
+
+with $$\beta_{0j} = \gamma_{00} + \mu_{0j}$$
+and this equation, but one $$\beta_1 = \gamma_{10}$$
+
+```{r}
+base_mod_1 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + nonftyp2 + lcdisdirfem,
+              family = binomial, data = data,  
+              nAGQ = 1, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+summary(base_mod_1)
+```
+
+ICC for base model
+
+```{r}
+calc_ICC(base_mod_1)
 ```
 
 
