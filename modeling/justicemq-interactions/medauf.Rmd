@@ -1,0 +1,1266 @@
+---
+title: "medauf Amicus Brief Models"
+author: "Amanda Konet"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, warning = F, error = F, message = F)
+
+library(tidyverse)
+library(lme4)
+library(kableExtra)
+library(broom.mixed)
+library(ggplot2)
+library(effects)
+library(interactions)
+library(boxr)
+box_auth()
+
+amicus_only <- "948366662469"
+full_cases <- "948832669583"
+final_cases <- "949901868853"
+```
+
+# Data
+
+Filter out instances where we don't have the dependent variable, justicevot. Change data types where necessary. Fill in NAs for frame freq with 0s
+
+
+```{r}
+data <- box_read(final_cases) %>% 
+  filter(justicevot != "NA") %>% 
+  mutate(justicevot = as.numeric(justicevot),
+         justiceid = as.factor(justiceid),
+         justicefem = as.factor(justicefem),
+         nonftyp2 = as.factor(nonftyp2),
+         lcdisdirfem = ifelse(lcdisdirfem==1, 0, 1),
+         lcdisdirfem = as.factor(lcdisdirfem),
+         #justicemq = cut(justicemq, breaks = c(-8, -2, 2, 5), labels = c("lib", "mod", "consv"),
+         #               include.lowest = T, right = F),
+         #justicemq = ifelse(justicemq >= 0, 0, 1),
+         #justicemq = as.factor(justicemq),
+         cirsplit = as.factor(cirsplit)) %>%
+  mutate(across(c(medauf_abortion_different:medauf_womens_rights), ~replace_na(.x, 0))) %>% 
+  filter(case != "Gonzales v PP")
+
+justicemq_conv <- data %>% select(orig = justicemq) %>% 
+  mutate(scaled = scale(orig)) %>%
+  arrange(scaled)
+```
+
+
+
+Add Case ID-- this will be the second level var
+
+```{r}
+case_ids <- data %>% distinct(case) %>% arrange(case) %>% mutate(id = 1:n())
+data <- case_ids %>% left_join(., data, by = "case")
+#data %>% head(1) %>% select(case:justicefem)
+```
+
+
+# Scale Data
+
+Remove cols where all values are NA. Not sure if we will do this or not in models. 
+
+```{r}
+data <- data %>%
+  select(case:cirsplit, pfemam, medauf_abortion_different:medauf_womens_rights) %>% 
+  mutate(across(c(where(is.numeric), -justicevot, -id, -cirsplit),
+                ~(scale(., center=T, scale=T))))
+                #~(scale(., center=T, scale=T) %>% as.vector)))
+
+total_cols <- data %>% select(contains('medauf')) %>% colnames()
+data <- janitor::remove_empty(data, which = "cols")
+remaining_cols <- data %>% select(contains('medauf')) %>% colnames()
+#setdiff(total_cols, remaining_cols)
+```
+
+
+```{r, eval=F}
+# Full List of Frames
+
+_abortion_different +
+_abortion_immoral +
+_anti_women +
+_bad_law + 
+_bodily_integrity + 
+_compulsory_motherhood +   
+_compulsory_motherhoood_ii +
+_couple +
+_equal_protection +
+_evidence  +
+_favor_childbirth +
+_fetus +
+_final_authority +
+_informed_consent +
+_intersectionality +
+_morality_religion +
+_overturn_roe  +
+_physician +
+_physician_negative +
+_privacy  +
+_protesters +               
+_standing +
+_state_interest +
+_uncertainty +
+_undue_burden +
+_untruthful +
+_womens_future_life + 
+_womens_health + 
+womens_rights
+```
+
+
+# Significance
+
+The following frames are significant: (see excel)
+
+* 0:
+* 0.01
+* 0.05: 
+* 0.10: 
+* 0.20: 
+
+\newpage
+
+
+# Abortion Regret
+
+
+```{r}
+mod3 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + 
+                medauf_abortion_regret + medauf_abortion_regret:justicemq,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+
+tidy(mod3,conf.int=F,exponentiate=T,effects="fixed") %>% 
+  mutate(across(where(is.numeric), ~round(.x, 4))) %>% 
+  mutate(probability_yes = round(estimate/(1+estimate),4)) %>% 
+  mutate(confidence = case_when(
+    p.value >= 0 & p.value <= 0.001 ~ "***", 
+    p.value > 0.001 & p.value <= 0.01 ~ "**",
+    p.value > 0.01 & p.value <= 0.05 ~ "*",
+    p.value > 0.05 & p.value <= 0.1 ~ ".",
+    T ~ ""
+  )) %>% 
+  rename(odds_ratio = estimate) %>% 
+  select(term, odds_ratio, p_value = p.value, confidence) %>% 
+  kable()
+
+```
+
+<br>
+
+```{r}
+interact_plot(mod3, pred = medauf_abortion_regret, modx = justicemq,
+              #modx.values = c(-3.5, -1, 0, 1, 3.5),
+              # random
+              #modx.values = c(-1.65, -.55, -.08, .35, 1.5),
+              # quantiles
+              modx.values = c(-3.4, -.75, -.3, .59, 1.9),
+              modx.labels = c("More Liberal", "Moderately Liberal","Moderate", "Moderately Conservative", "More Conservative"),
+              colors = c("blue", "gray", "lightskyblue", "darksalmon", "red"),
+              #outcome.scale = "link",
+              #interval = T,
+              x.label = "Frame Frequency",
+              y.label = "Probability of Voting in Favor of Repro. Rights")
+```
+
+
+```{r, eval=F}
+# interaction levels
+ef <- effect(term="justicemq:medauf_abortion_regret", mod = mod3)
+#ef1<-effect(term="pfemau*justicemq",xlevels=list(pfemau=c(0,.5,1)),mod=res0)  #used this in paper
+
+# as dataframe
+ef_df <-as.data.frame(ef) %>% mutate(medauf_abortion_regret = as.factor(medauf_abortion_regret))
+
+#By Color 
+ggplot(ef_df, aes(x = justicemq, y= fit, group = medauf_abortion_regret))+
+  geom_point()+
+  geom_line(size = 1, aes(linetype = medauf_abortion_regret))+
+  geom_ribbon(aes(ymin=fit-se, ymax=fit+se, fill=medauf_abortion_regret),alpha=0.5) + 
+  labs(title = "Frequency of Abortion Regret Frame and Justice Ideology", 
+       x= "Liberal                        Justice Ideology                         Conservative",
+       y="Vote for Opp.             Marginal Effects             Vote for Fem.") + 
+  guides(fill=guide_legend(reverse=T))+
+  guides(linetype=guide_legend(reverse=T))+
+  theme_bw() +
+  #scale_fill_grey()+
+  theme(plot.title = element_text(hjust = 0.5))+
+  labs(fill="Frame Frequency",
+       linetype="Frame Frequency")
+```
+
+\newpage 
+
+```{r}
+summary(mod3)
+```
+
+\newpage
+
+# Bad Law
+
+```{r}
+mod4 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + 
+                medauf_bad_law + medauf_bad_law:justicemq,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+tidy(mod4,conf.int=F,exponentiate=T,effects="fixed") %>% 
+  mutate(across(where(is.numeric), ~round(.x, 4))) %>% 
+  mutate(probability_yes = round(estimate/(1+estimate),4)) %>% 
+  mutate(confidence = case_when(
+    p.value >= 0 & p.value <= 0.001 ~ "***", 
+    p.value > 0.001 & p.value <= 0.01 ~ "**",
+    p.value > 0.01 & p.value <= 0.05 ~ "*",
+    p.value > 0.05 & p.value <= 0.1 ~ ".",
+    T ~ ""
+  )) %>% 
+  rename(odds_ratio = estimate) %>% 
+  select(term, odds_ratio, p_value = p.value, confidence) %>% 
+  kable()
+
+```
+
+<br>
+
+```{r}
+interact_plot(mod4, pred = medauf_bad_law, modx = justicemq,
+              #modx.values = c(-3.5, -1, 0, 1, 3.5),
+              # random
+              #modx.values = c(-1.65, -.55, -.08, .35, 1.5),
+              # quantiles
+              modx.values = c(-3.4, -.75, -.3, .59, 1.9),
+              modx.labels = c("More Liberal", "Moderately Liberal","Moderate", "Moderately Conservative", "More Conservative"),
+              colors = c("blue", "gray", "lightskyblue", "darksalmon", "red"),
+              #outcome.scale = "link",
+              x.label = "Frame Frequency",
+              y.label = "Probability of Voting in Favor of Repro. Rights")
+```
+
+
+```{r, eval=F}
+# interaction levels
+ef <- effect(term="justicemq:medauf_bad_law", mod = mod4)
+ef <- effect(term="justicemq:medauf_bad_law", xlevels = list(justicemq=c(-4,-1,1,4)) ,mod = mod4)  #used this in paper
+
+# as dataframe
+#ef_df <-as.data.frame(ef) %>% mutate(medauf_bad_law = as.factor(medauf_bad_law))
+ef_df <-as.data.frame(ef) %>% mutate(justicemq = as.factor(justicemq))
+
+#By Color 
+ggplot(ef_df, aes(x = medauf_bad_law, y= fit, group = justicemq))+
+  geom_point()+
+  geom_line(size = 1, aes(linetype = justicemq))+
+  geom_ribbon(aes(ymin=fit-se, ymax=fit+se, fill=justicemq),alpha=0.5) + 
+  labs(title = "Frequency of Bad Law Frame and Justice Ideology", 
+       x= "Liberal                        Justice Ideology                         Conservative",
+       y="Vote for Opp.             Marginal Effects             Vote for Fem.") + 
+  guides(fill=guide_legend(reverse=T))+
+  guides(linetype=guide_legend(reverse=T))+
+  theme_bw() +
+  #scale_fill_grey()+
+  theme(plot.title = element_text(hjust = 0.5))+
+  labs(fill="Frame Frequency",
+       linetype="Frame Frequency")
+```
+
+\newpage 
+
+```{r}
+summary(mod4)
+```
+
+\newpage
+
+# Evidence
+
+```{r}
+mod9 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + 
+                medauf_evidence + medauf_evidence:justicemq,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+tidy(mod9,conf.int=F,exponentiate=T,effects="fixed") %>% 
+  mutate(across(where(is.numeric), ~round(.x, 4))) %>% 
+  mutate(probability_yes = round(estimate/(1+estimate),4)) %>% 
+  mutate(confidence = case_when(
+    p.value >= 0 & p.value <= 0.001 ~ "***", 
+    p.value > 0.001 & p.value <= 0.01 ~ "**",
+    p.value > 0.01 & p.value <= 0.05 ~ "*",
+    p.value > 0.05 & p.value <= 0.1 ~ ".",
+    T ~ ""
+  )) %>% 
+  rename(odds_ratio = estimate) %>% 
+  select(term, odds_ratio, p_value = p.value, confidence) %>% 
+  kable()
+```
+
+<br>
+
+```{r}
+interact_plot(mod9, pred = medauf_evidence, modx = justicemq,
+              #modx.values = c(-3.5, -1, 0, 1, 3.5),
+              # random
+              #modx.values = c(-1.65, -.55, -.08, .35, 1.5),
+              # quantiles
+              modx.values = c(-3.4, -.75, -.3, .59, 1.9),
+              modx.labels = c("More Liberal", "Moderately Liberal","Moderate", "Moderately Conservative", "More Conservative"),
+              colors = c("blue", "gray", "lightskyblue", "darksalmon", "red"),
+              #outcome.scale = "link",
+              x.label = "Frame Frequency",
+              y.label = "Probability of Voting in Favor of Repro. Rights")
+```
+
+
+```{r, eval=F}
+# interaction levels
+ef <- effect(term="justicemq:medauf_evidence", mod = mod9)
+#ef1<-effect(term="pfemau*justicemq",xlevels=list(pfemau=c(0,.5,1)),mod=res0)  #used this in paper
+
+# as dataframe
+ef_df <-as.data.frame(ef) %>% mutate(medauf_evidence = as.factor(medauf_evidence))
+
+#By Color 
+ggplot(ef_df, aes(x = justicemq, y= fit, group = medauf_evidence))+
+  geom_point()+
+  geom_line(size = 1, aes(linetype = medauf_evidence))+
+  geom_ribbon(aes(ymin=fit-se, ymax=fit+se, fill=medauf_evidence),alpha=0.5) + 
+  labs(title = "Frequency of Evidence Frame and Justice Ideology", 
+       x= "Liberal                        Justice Ideology                         Conservative",
+       y="Vote for Opp.             Marginal Effects             Vote for Fem.") + 
+  guides(fill=guide_legend(reverse=T))+
+  guides(linetype=guide_legend(reverse=T))+
+  theme_bw() +
+  #scale_fill_grey()+
+  theme(plot.title = element_text(hjust = 0.5))+
+  labs(fill="Frame Frequency",
+       linetype="Frame Frequency")
+```
+
+\newpage 
+
+```{r}
+summary(mod9)
+```
+
+
+\newpage
+
+# Fetus
+
+```{r}
+mod11 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + 
+                medauf_fetus + medauf_fetus:justicemq,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+tidy(mod11,conf.int=F,exponentiate=T,effects="fixed") %>% 
+  mutate(across(where(is.numeric), ~round(.x, 4))) %>% 
+  mutate(probability_yes = round(estimate/(1+estimate),4)) %>% 
+  mutate(confidence = case_when(
+    p.value >= 0 & p.value <= 0.001 ~ "***", 
+    p.value > 0.001 & p.value <= 0.01 ~ "**",
+    p.value > 0.01 & p.value <= 0.05 ~ "*",
+    p.value > 0.05 & p.value <= 0.1 ~ ".",
+    T ~ ""
+  )) %>% 
+  rename(odds_ratio = estimate) %>% 
+  select(term, odds_ratio, p_value = p.value, confidence) %>% 
+  kable()
+
+```
+
+<br>
+
+```{r}
+interact_plot(mod11, pred = medauf_fetus, modx = justicemq,
+              #modx.values = c(-3.5, -1, 0, 1, 3.5),
+              # random
+              #modx.values = c(-1.65, -.55, -.08, .35, 1.5),
+              # quantiles
+              modx.values = c(-3.4, -.75, -.3, .59, 1.9),
+              modx.labels = c("More Liberal", "Moderately Liberal","Moderate", "Moderately Conservative", "More Conservative"),
+              colors = c("blue", "gray", "lightskyblue", "darksalmon", "red"),
+              #outcome.scale = "link",
+              x.label = "Frame Frequency",
+              y.label = "Probability of Voting in Favor of Repro. Rights")
+```
+
+
+```{r, eval=F}
+# interaction levels
+ef <- effect(term="justicemq:medauf_fetus", mod = mod11)
+#ef1<-effect(term="pfemau*justicemq",xlevels=list(pfemau=c(0,.5,1)),mod=res0)  #used this in paper
+
+# as dataframe
+ef_df <-as.data.frame(ef) %>% mutate(medauf_fetus = as.factor(medauf_fetus))
+
+#By Color 
+ggplot(ef_df, aes(x = justicemq, y= fit, group = medauf_fetus))+
+  geom_point()+
+  geom_line(size = 1, aes(linetype = medauf_fetus))+
+  geom_ribbon(aes(ymin=fit-se, ymax=fit+se, fill=medauf_fetus),alpha=0.5) + 
+  labs(title = "Frequency of Fetus Frame and Justice Ideology", 
+       x= "Liberal                        Justice Ideology                         Conservative",
+       y="Vote for Opp.             Marginal Effects             Vote for Fem.") + 
+  guides(fill=guide_legend(reverse=T))+
+  guides(linetype=guide_legend(reverse=T))+
+  theme_bw() +
+  #scale_fill_grey()+
+  theme(plot.title = element_text(hjust = 0.5))+
+  labs(fill="Frame Frequency",
+       linetype="Frame Frequency")
+```
+
+\newpage 
+
+```{r}
+summary(mod11)
+```
+
+\newpage
+
+# Final Authority
+
+```{r}
+mod12 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + 
+                medauf_final_authority + medauf_final_authority:justicemq,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+tidy(mod12,conf.int=F,exponentiate=T,effects="fixed") %>% 
+  mutate(across(where(is.numeric), ~round(.x, 4))) %>% 
+  mutate(probability_yes = round(estimate/(1+estimate),4)) %>% 
+  mutate(confidence = case_when(
+    p.value >= 0 & p.value <= 0.001 ~ "***", 
+    p.value > 0.001 & p.value <= 0.01 ~ "**",
+    p.value > 0.01 & p.value <= 0.05 ~ "*",
+    p.value > 0.05 & p.value <= 0.1 ~ ".",
+    T ~ ""
+  )) %>% 
+  rename(odds_ratio = estimate) %>% 
+  select(term, odds_ratio, p_value = p.value, confidence) %>% 
+  kable()
+
+```
+
+<br>
+
+```{r}
+interact_plot(mod12, pred = medauf_final_authority, modx = justicemq,
+              #modx.values = c(-3.5, -1, 0, 1, 3.5),
+              # random
+              #modx.values = c(-1.65, -.55, -.08, .35, 1.5),
+              # quantiles
+              modx.values = c(-3.4, -.75, -.3, .59, 1.9),
+              modx.labels = c("More Liberal", "Moderately Liberal","Moderate", "Moderately Conservative", "More Conservative"),
+              colors = c("blue", "gray", "lightskyblue", "darksalmon", "red"),
+              #outcome.scale = "link",
+              x.label = "Frame Frequency",
+              y.label = "Probability of Voting in Favor of Repro. Rights")
+```
+
+
+```{r, eval=F}
+# interaction levels
+ef <- effect(term="justicemq:medauf_final_authority", mod = mod12)
+#ef1<-effect(term="pfemau*justicemq",xlevels=list(pfemau=c(0,.5,1)),mod=res0)  #used this in paper
+
+# as dataframe
+ef_df <-as.data.frame(ef) %>% mutate(medauf_final_authority = as.factor(medauf_final_authority))
+
+#By Color 
+ggplot(ef_df, aes(x = justicemq, y= fit, group = medauf_final_authority))+
+  geom_point()+
+  geom_line(size = 1, aes(linetype = medauf_final_authority))+
+  geom_ribbon(aes(ymin=fit-se, ymax=fit+se, fill=medauf_final_authority),alpha=0.5) + 
+  labs(title = "Frequency of Final Authority Frame and Justice Ideology", 
+       x= "Liberal                        Justice Ideology                         Conservative",
+       y="Vote for Opp.             Marginal Effects             Vote for Fem.") + 
+  guides(fill=guide_legend(reverse=T))+
+  guides(linetype=guide_legend(reverse=T))+
+  theme_bw() +
+  #scale_fill_grey()+
+  theme(plot.title = element_text(hjust = 0.5))+
+  labs(fill="Frame Frequency",
+       linetype="Frame Frequency")
+```
+
+\newpage 
+
+```{r}
+summary(mod12)
+```
+\newpage
+
+# Morality Religion
+
+```{r}
+mod14 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + 
+                medauf_morality_religion + medauf_morality_religion:justicemq,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+tidy(mod14,conf.int=F,exponentiate=T,effects="fixed") %>% 
+  mutate(across(where(is.numeric), ~round(.x, 4))) %>% 
+  mutate(probability_yes = round(estimate/(1+estimate),4)) %>% 
+  mutate(confidence = case_when(
+    p.value >= 0 & p.value <= 0.001 ~ "***", 
+    p.value > 0.001 & p.value <= 0.01 ~ "**",
+    p.value > 0.01 & p.value <= 0.05 ~ "*",
+    p.value > 0.05 & p.value <= 0.1 ~ ".",
+    T ~ ""
+  )) %>% 
+  rename(odds_ratio = estimate) %>% 
+  select(term, odds_ratio, p_value = p.value, confidence) %>% 
+  kable()
+
+```
+
+<br>
+
+```{r}
+interact_plot(mod14, pred = medauf_morality_religion, modx = justicemq,
+              #modx.values = c(-3.5, -1, 0, 1, 3.5),
+              # random
+              #modx.values = c(-1.65, -.55, -.08, .35, 1.5),
+              # quantiles
+              modx.values = c(-3.4, -.75, -.3, .59, 1.9),
+              modx.labels = c("More Liberal", "Moderately Liberal","Moderate", "Moderately Conservative", "More Conservative"),
+              colors = c("blue", "gray", "lightskyblue", "darksalmon", "red"),
+              #outcome.scale = "link",
+              x.label = "Frame Frequency",
+              y.label = "Probability of Voting in Favor of Repro. Rights")
+```
+
+
+```{r, eval=F}
+# interaction levels
+ef <- effect(term="justicemq:medauf_morality_religion", mod = mod14)
+#ef1<-effect(term="pfemau*justicemq",xlevels=list(pfemau=c(0,.5,1)),mod=res0)  #used this in paper
+
+# as dataframe
+ef_df <-as.data.frame(ef) %>% mutate(medauf_morality_religion = as.factor(medauf_morality_religion))
+
+#By Color 
+ggplot(ef_df, aes(x = justicemq, y= fit, group = medauf_morality_religion))+
+  geom_point()+
+  geom_line(size = 1, aes(linetype = medauf_morality_religion))+
+  geom_ribbon(aes(ymin=fit-se, ymax=fit+se, fill=medauf_morality_religion),alpha=0.5) + 
+  labs(title = "Frequency of Morality & Religion Frame and Justice Ideology", 
+       x= "Liberal                        Justice Ideology                         Conservative",
+       y="Vote for Opp.             Marginal Effects             Vote for Fem.") + 
+  guides(fill=guide_legend(reverse=T))+
+  guides(linetype=guide_legend(reverse=T))+
+  theme_bw() +
+  #scale_fill_grey()+
+  theme(plot.title = element_text(hjust = 0.5))+
+  labs(fill="Frame Frequency",
+       linetype="Frame Frequency")
+```
+
+\newpage 
+
+```{r}
+summary(mod14)
+```
+
+\newpage
+
+# Overturn Roe
+
+```{r}
+mod15 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + 
+                medauf_overturn_roe + medauf_overturn_roe:justicemq,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+tidy(mod15,conf.int=F,exponentiate=T,effects="fixed") %>% 
+  mutate(across(where(is.numeric), ~round(.x, 4))) %>% 
+  mutate(probability_yes = round(estimate/(1+estimate),4)) %>% 
+  mutate(confidence = case_when(
+    p.value >= 0 & p.value <= 0.001 ~ "***", 
+    p.value > 0.001 & p.value <= 0.01 ~ "**",
+    p.value > 0.01 & p.value <= 0.05 ~ "*",
+    p.value > 0.05 & p.value <= 0.1 ~ ".",
+    T ~ ""
+  )) %>% 
+  rename(odds_ratio = estimate) %>% 
+  select(term, odds_ratio, p_value = p.value, confidence) %>% 
+  kable()
+
+```
+
+<br>
+
+```{r}
+interact_plot(mod15, pred = medauf_overturn_roe, modx = justicemq,
+              #modx.values = c(-3.5, -1, 0, 1, 3.5),
+              # random
+              #modx.values = c(-1.65, -.55, -.08, .35, 1.5),
+              # quantiles
+              modx.values = c(-3.4, -.75, -.3, .59, 1.9),
+              modx.labels = c("More Liberal", "Moderately Liberal","Moderate", "Moderately Conservative", "More Conservative"),
+              colors = c("blue", "gray", "lightskyblue", "darksalmon", "red"),
+              #outcome.scale = "link",
+              x.label = "Frame Frequency",
+              y.label = "Probability of Voting in Favor of Repro. Rights")
+```
+
+
+```{r, eval=F}
+# interaction levels
+ef <- effect(term="justicemq:medauf_overturn_roe", mod = mod15)
+#ef1<-effect(term="pfemau*justicemq",xlevels=list(pfemau=c(0,.5,1)),mod=res0)  #used this in paper
+
+# as dataframe
+ef_df <-as.data.frame(ef) %>% mutate(medauf_overturn_roe = as.factor(medauf_overturn_roe))
+
+#By Color 
+ggplot(ef_df, aes(x = justicemq, y= fit, group = medauf_overturn_roe))+
+  geom_point()+
+  geom_line(size = 1, aes(linetype = medauf_overturn_roe))+
+  geom_ribbon(aes(ymin=fit-se, ymax=fit+se, fill=medauf_overturn_roe),alpha=0.5) + 
+  labs(title = "Frequency of Overturn Roe Frame and Justice Ideology", 
+       x= "Liberal                        Justice Ideology                         Conservative",
+       y="Vote for Opp.             Marginal Effects             Vote for Fem.") + 
+  guides(fill=guide_legend(reverse=T))+
+  guides(linetype=guide_legend(reverse=T))+
+  theme_bw() +
+  #scale_fill_grey()+
+  theme(plot.title = element_text(hjust = 0.5))+
+  labs(fill="Frame Frequency",
+       linetype="Frame Frequency")
+```
+
+\newpage 
+
+```{r}
+summary(mod15)
+```
+
+\newpage
+
+# Privacy
+
+```{r}
+mod18 <- glmer(justicevot ~
+               (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + 
+                medauf_privacy + medauf_privacy:justicemq,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+tidy(mod18,conf.int=F,exponentiate=T,effects="fixed") %>% 
+  mutate(across(where(is.numeric), ~round(.x, 4))) %>% 
+  mutate(probability_yes = round(estimate/(1+estimate),4)) %>% 
+  mutate(confidence = case_when(
+    p.value >= 0 & p.value <= 0.001 ~ "***", 
+    p.value > 0.001 & p.value <= 0.01 ~ "**",
+    p.value > 0.01 & p.value <= 0.05 ~ "*",
+    p.value > 0.05 & p.value <= 0.1 ~ ".",
+    T ~ ""
+  )) %>% 
+  rename(odds_ratio = estimate) %>% 
+  select(term, odds_ratio, p_value = p.value, confidence) %>% 
+  kable()
+
+```
+
+<br>
+
+```{r}
+interact_plot(mod18, pred = medauf_privacy, modx = justicemq,
+              #modx.values = c(-3.5, -1, 0, 1, 3.5),
+              # random
+              #modx.values = c(-1.65, -.55, -.08, .35, 1.5),
+              # quantiles
+              modx.values = c(-3.4, -.75, -.3, .59, 1.9),
+              modx.labels = c("More Liberal", "Moderately Liberal","Moderate", "Moderately Conservative", "More Conservative"),
+              colors = c("blue", "gray", "lightskyblue", "darksalmon", "red"),
+              #outcome.scale = "link",
+              x.label = "Frame Frequency",
+              y.label = "Probability of Voting in Favor of Repro. Rights")
+```
+
+
+```{r, eval=F}
+# interaction levels
+ef <- effect(term="justicemq:medauf_privacy", mod = mod18)
+#ef1<-effect(term="pfemau*justicemq",xlevels=list(pfemau=c(0,.5,1)),mod=res0)  #used this in paper
+
+# as dataframe
+ef_df <-as.data.frame(ef) %>% mutate(medauf_privacy = as.factor(medauf_privacy))
+
+#By Color 
+ggplot(ef_df, aes(x = justicemq, y= fit, group = medauf_privacy))+
+  geom_point()+
+  geom_line(size = 1, aes(linetype = medauf_privacy))+
+  geom_ribbon(aes(ymin=fit-se, ymax=fit+se, fill=medauf_privacy),alpha=0.5) + 
+  labs(title = "Frequency of Privacy Frame and Justice Ideology", 
+       x= "Liberal                        Justice Ideology                         Conservative",
+       y="Vote for Opp.             Marginal Effects             Vote for Fem.") + 
+  guides(fill=guide_legend(reverse=T))+
+  guides(linetype=guide_legend(reverse=T))+
+  theme_bw() +
+  #scale_fill_grey()+
+  theme(plot.title = element_text(hjust = 0.5))+
+  labs(fill="Frame Frequency",
+       linetype="Frame Frequency")
+```
+
+\newpage 
+
+```{r}
+summary(mod18)
+```
+
+\newpage
+
+# Standing
+
+```{r}
+mod20 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + 
+                medauf_standing + medauf_standing:justicemq,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+tidy(mod20,conf.int=F,exponentiate=T,effects="fixed") %>% 
+  mutate(across(where(is.numeric), ~round(.x, 4))) %>% 
+  mutate(probability_yes = round(estimate/(1+estimate),4)) %>% 
+  mutate(confidence = case_when(
+    p.value >= 0 & p.value <= 0.001 ~ "***", 
+    p.value > 0.001 & p.value <= 0.01 ~ "**",
+    p.value > 0.01 & p.value <= 0.05 ~ "*",
+    p.value > 0.05 & p.value <= 0.1 ~ ".",
+    T ~ ""
+  )) %>% 
+  rename(odds_ratio = estimate) %>% 
+  select(term, odds_ratio, p_value = p.value, confidence) %>% 
+  kable()
+
+```
+
+<br>
+
+```{r}
+interact_plot(mod20, pred = medauf_standing, modx = justicemq,
+              #modx.values = c(-3.5, -1, 0, 1, 3.5),
+              # random
+              #modx.values = c(-1.65, -.55, -.08, .35, 1.5),
+              # quantiles
+              modx.values = c(-3.4, -.75, -.3, .59, 1.9),
+              modx.labels = c("More Liberal", "Moderately Liberal","Moderate", "Moderately Conservative", "More Conservative"),
+              colors = c("blue", "gray", "lightskyblue", "darksalmon", "red"),
+              #outcome.scale = "link",
+              x.label = "Frame Frequency",
+              y.label = "Probability of Voting in Favor of Repro. Rights")
+```
+
+
+```{r, eval=F}
+# interaction levels
+ef <- effect(term="justicemq:medauf_standing", mod = mod20)
+#ef1<-effect(term="pfemau*justicemq",xlevels=list(pfemau=c(0,.5,1)),mod=res0)  #used this in paper
+
+# as dataframe
+ef_df <-as.data.frame(ef) %>% mutate(medauf_standing = as.factor(medauf_standing))
+
+#By Color 
+ggplot(ef_df, aes(x = justicemq, y= fit, group = medauf_standing))+
+  geom_point()+
+  geom_line(size = 1, aes(linetype = medauf_standing))+
+  geom_ribbon(aes(ymin=fit-se, ymax=fit+se, fill=medauf_standing),alpha=0.5) + 
+  labs(title = "Frequency of Standing Frame and Justice Ideology", 
+       x= "Liberal                        Justice Ideology                         Conservative",
+       y="Vote for Opp.             Marginal Effects             Vote for Fem.") + 
+  guides(fill=guide_legend(reverse=T))+
+  guides(linetype=guide_legend(reverse=T))+
+  theme_bw() +
+  #scale_fill_grey()+
+  theme(plot.title = element_text(hjust = 0.5))+
+  labs(fill="Frame Frequency",
+       linetype="Frame Frequency")
+```
+
+\newpage 
+
+```{r}
+summary(mod20)
+```
+
+\newpage
+
+# Uncertainty
+
+```{r}
+mod22 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + 
+                medauf_uncertainty + medauf_uncertainty:justicemq,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+tidy(mod22,conf.int=F,exponentiate=T,effects="fixed") %>% 
+  mutate(across(where(is.numeric), ~round(.x, 4))) %>% 
+  mutate(probability_yes = round(estimate/(1+estimate),4)) %>% 
+  mutate(confidence = case_when(
+    p.value >= 0 & p.value <= 0.001 ~ "***", 
+    p.value > 0.001 & p.value <= 0.01 ~ "**",
+    p.value > 0.01 & p.value <= 0.05 ~ "*",
+    p.value > 0.05 & p.value <= 0.1 ~ ".",
+    T ~ ""
+  )) %>% 
+  rename(odds_ratio = estimate) %>% 
+  select(term, odds_ratio, p_value = p.value, confidence) %>% 
+  kable()
+
+```
+
+<br>
+
+```{r}
+interact_plot(mod22, pred = medauf_uncertainty, modx = justicemq,
+              #modx.values = c(-3.5, -1, 0, 1, 3.5),
+              # random
+              #modx.values = c(-1.65, -.55, -.08, .35, 1.5),
+              # quantiles
+              modx.values = c(-3.4, -.75, -.3, .59, 1.9),
+              modx.labels = c("More Liberal", "Moderately Liberal","Moderate", "Moderately Conservative", "More Conservative"),
+              colors = c("blue", "gray", "lightskyblue", "darksalmon", "red"),
+              #outcome.scale = "link",
+              x.label = "Frame Frequency",
+              y.label = "Probability of Voting in Favor of Repro. Rights")
+```
+
+
+```{r, eval=F}
+# interaction levels
+ef <- effect(term="justicemq:medauf_uncertainty", mod = mod22)
+#ef1<-effect(term="pfemau*justicemq",xlevels=list(pfemau=c(0,.5,1)),mod=res0)  #used this in paper
+
+# as dataframe
+ef_df <-as.data.frame(ef) %>% mutate(medauf_uncertainty = as.factor(medauf_uncertainty))
+
+#By Color 
+ggplot(ef_df, aes(x = justicemq, y= fit, group = medauf_uncertainty))+
+  geom_point()+
+  geom_line(size = 1, aes(linetype = medauf_uncertainty))+
+  geom_ribbon(aes(ymin=fit-se, ymax=fit+se, fill=medauf_uncertainty),alpha=0.5) + 
+  labs(title = "Frequency of Uncertainty Frame and Justice Ideology", 
+       x= "Liberal                        Justice Ideology                         Conservative",
+       y="Vote for Opp.             Marginal Effects             Vote for Fem.") + 
+  guides(fill=guide_legend(reverse=T))+
+  guides(linetype=guide_legend(reverse=T))+
+  theme_bw() +
+  #scale_fill_grey()+
+  theme(plot.title = element_text(hjust = 0.5))+
+  labs(fill="Frame Frequency",
+       linetype="Frame Frequency")
+```
+
+\newpage 
+
+```{r}
+summary(mod22)
+```
+
+\newpage
+
+# Undue Burden
+
+```{r}
+mod23 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + 
+                medauf_undue_burden + medauf_undue_burden:justicemq,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+tidy(mod23,conf.int=F,exponentiate=T,effects="fixed") %>% 
+  mutate(across(where(is.numeric), ~round(.x, 4))) %>% 
+  mutate(probability_yes = round(estimate/(1+estimate),4)) %>% 
+  mutate(confidence = case_when(
+    p.value >= 0 & p.value <= 0.001 ~ "***", 
+    p.value > 0.001 & p.value <= 0.01 ~ "**",
+    p.value > 0.01 & p.value <= 0.05 ~ "*",
+    p.value > 0.05 & p.value <= 0.1 ~ ".",
+    T ~ ""
+  )) %>% 
+  rename(odds_ratio = estimate) %>% 
+  select(term, odds_ratio, p_value = p.value, confidence) %>% 
+  kable()
+
+```
+
+<br>
+
+```{r}
+interact_plot(mod23, pred = medauf_undue_burden, modx = justicemq,
+              #modx.values = c(-3.5, -1, 0, 1, 3.5),
+              # random
+              #modx.values = c(-1.65, -.55, -.08, .35, 1.5),
+              # quantiles
+              modx.values = c(-3.4, -.75, -.3, .59, 1.9),
+              modx.labels = c("More Liberal", "Moderately Liberal","Moderate", "Moderately Conservative", "More Conservative"),
+              colors = c("blue", "gray", "lightskyblue", "darksalmon", "red"),
+              #outcome.scale = "link",
+              x.label = "Frame Frequency",
+              y.label = "Probability of Voting in Favor of Repro. Rights")
+```
+
+
+```{r, eval=F}
+# interaction levels
+ef <- effect(term="justicemq:medauf_undue_burden", mod = mod23)
+#ef1<-effect(term="pfemau*justicemq",xlevels=list(pfemau=c(0,.5,1)),mod=res0)  #used this in paper
+
+# as dataframe
+ef_df <-as.data.frame(ef) %>% mutate(medauf_undue_burden = as.factor(medauf_undue_burden))
+
+#By Color 
+ggplot(ef_df, aes(x = justicemq, y= fit, group = medauf_undue_burden))+
+  geom_point()+
+  geom_line(size = 1, aes(linetype = medauf_undue_burden))+
+  geom_ribbon(aes(ymin=fit-se, ymax=fit+se, fill=medauf_undue_burden),alpha=0.5) + 
+  labs(title = "Frequency of Undue Burden Frame and Justice Ideology", 
+       x= "Liberal                        Justice Ideology                         Conservative",
+       y="Vote for Opp.             Marginal Effects             Vote for Fem.") + 
+  guides(fill=guide_legend(reverse=T))+
+  guides(linetype=guide_legend(reverse=T))+
+  theme_bw() +
+  #scale_fill_grey()+
+  theme(plot.title = element_text(hjust = 0.5))+
+  labs(fill="Frame Frequency",
+       linetype="Frame Frequency")
+```
+
+\newpage 
+
+```{r}
+summary(mod23)
+```
+
+\newpage
+
+# Untruthful
+
+```{r}
+mod24 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + 
+                medauf_untruthful + medauf_untruthful:justicemq,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+tidy(mod24,conf.int=F,exponentiate=T,effects="fixed") %>% 
+  mutate(across(where(is.numeric), ~round(.x, 4))) %>% 
+  mutate(probability_yes = round(estimate/(1+estimate),4)) %>% 
+  mutate(confidence = case_when(
+    p.value >= 0 & p.value <= 0.001 ~ "***", 
+    p.value > 0.001 & p.value <= 0.01 ~ "**",
+    p.value > 0.01 & p.value <= 0.05 ~ "*",
+    p.value > 0.05 & p.value <= 0.1 ~ ".",
+    T ~ ""
+  )) %>% 
+  rename(odds_ratio = estimate) %>% 
+  select(term, odds_ratio, p_value = p.value, confidence) %>% 
+  kable()
+
+```
+
+<br>
+
+```{r}
+interact_plot(mod24, pred = medauf_untruthful, modx = justicemq,
+              #modx.values = c(-3.5, -1, 0, 1, 3.5),
+              # random
+              #modx.values = c(-1.65, -.55, -.08, .35, 1.5),
+              # quantiles
+              modx.values = c(-3.4, -.75, -.3, .59, 1.9),
+              modx.labels = c("More Liberal", "Moderately Liberal","Moderate", "Moderately Conservative", "More Conservative"),
+              colors = c("blue", "gray", "lightskyblue", "darksalmon", "red"),
+              #outcome.scale = "link",
+              x.label = "Frame Frequency",
+              y.label = "Probability of Voting in Favor of Repro. Rights")
+```
+
+
+```{r, eval=F}
+# interaction levels
+ef <- effect(term="justicemq:medauf_untruthful", mod = mod24)
+#ef1<-effect(term="pfemau*justicemq",xlevels=list(pfemau=c(0,.5,1)),mod=res0)  #used this in paper
+
+# as dataframe
+ef_df <-as.data.frame(ef) %>% mutate(medauf_untruthful = as.factor(medauf_untruthful))
+
+#By Color 
+ggplot(ef_df, aes(x = justicemq, y= fit, group = medauf_untruthful))+
+  geom_point()+
+  geom_line(size = 1, aes(linetype = medauf_untruthful))+
+  geom_ribbon(aes(ymin=fit-se, ymax=fit+se, fill=medauf_untruthful),alpha=0.5) + 
+  labs(title = "Frequency of Untruthful Frame and Justice Ideology", 
+       x= "Liberal                        Justice Ideology                         Conservative",
+       y="Vote for Opp.             Marginal Effects             Vote for Fem.") + 
+  guides(fill=guide_legend(reverse=T))+
+  guides(linetype=guide_legend(reverse=T))+
+  theme_bw() +
+  #scale_fill_grey()+
+  theme(plot.title = element_text(hjust = 0.5))+
+  labs(fill="Frame Frequency",
+       linetype="Frame Frequency")
+```
+
+\newpage 
+
+```{r}
+summary(mod24)
+```
+\newpage
+
+# Women's Future Life
+
+```{r}
+mod25 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + 
+                medauf_womens_future_life + medauf_womens_future_life:justicemq,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+tidy(mod25,conf.int=F,exponentiate=T,effects="fixed") %>% 
+  mutate(across(where(is.numeric), ~round(.x, 4))) %>% 
+  mutate(probability_yes = round(estimate/(1+estimate),4)) %>% 
+  mutate(confidence = case_when(
+    p.value >= 0 & p.value <= 0.001 ~ "***", 
+    p.value > 0.001 & p.value <= 0.01 ~ "**",
+    p.value > 0.01 & p.value <= 0.05 ~ "*",
+    p.value > 0.05 & p.value <= 0.1 ~ ".",
+    T ~ ""
+  )) %>% 
+  rename(odds_ratio = estimate) %>% 
+  select(term, odds_ratio, p_value = p.value, confidence) %>% 
+  kable()
+
+```
+
+<br>
+
+```{r}
+interact_plot(mod25, pred = medauf_womens_future_life, modx = justicemq,
+              #modx.values = c(-3.5, -1, 0, 1, 3.5),
+              # random
+              #modx.values = c(-1.65, -.55, -.08, .35, 1.5),
+              # quantiles
+              modx.values = c(-3.4, -.75, -.3, .59, 1.9),
+              modx.labels = c("More Liberal", "Moderately Liberal","Moderate", "Moderately Conservative", "More Conservative"),
+              colors = c("blue", "gray", "lightskyblue", "darksalmon", "red"),
+              #outcome.scale = "link",
+              x.label = "Frame Frequency",
+              y.label = "Probability of Voting in Favor of Repro. Rights")
+```
+
+
+```{r, eval=F}
+# interaction levels
+ef <- effect(term="justicemq:medauf_womens_future_life", mod = mod25)
+#ef1<-effect(term="pfemau*justicemq",xlevels=list(pfemau=c(0,.5,1)),mod=res0)  #used this in paper
+
+# as dataframe
+ef_df <-as.data.frame(ef) %>% mutate(medauf_womens_future_life = as.factor(medauf_womens_future_life))
+
+#By Color 
+ggplot(ef_df, aes(x = justicemq, y= fit, group = medauf_womens_future_life))+
+  geom_point()+
+  geom_line(size = 1, aes(linetype = medauf_womens_future_life))+
+  geom_ribbon(aes(ymin=fit-se, ymax=fit+se, fill=medauf_womens_future_life),alpha=0.5) + 
+  labs(title = "Frequency of Abortion Regret Frame and Justice Ideology", 
+       x= "Liberal                        Justice Ideology                         Conservative",
+       y="Vote for Opp.             Marginal Effects             Vote for Fem.") + 
+  guides(fill=guide_legend(reverse=T))+
+  guides(linetype=guide_legend(reverse=T))+
+  theme_bw() +
+  #scale_fill_grey()+
+  theme(plot.title = element_text(hjust = 0.5))+
+  labs(fill="Frame Frequency",
+       linetype="Frame Frequency")
+```
+
+\newpage 
+
+```{r}
+summary(mod25)
+```
+\newpage
+
+# Women's Health
+
+```{r}
+mod26 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + 
+                medauf_womens_health + medauf_womens_health:justicemq,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+tidy(mod26,conf.int=F,exponentiate=T,effects="fixed") %>% 
+  mutate(across(where(is.numeric), ~round(.x, 4))) %>% 
+  mutate(probability_yes = round(estimate/(1+estimate),4)) %>% 
+  mutate(confidence = case_when(
+    p.value >= 0 & p.value <= 0.001 ~ "***", 
+    p.value > 0.001 & p.value <= 0.01 ~ "**",
+    p.value > 0.01 & p.value <= 0.05 ~ "*",
+    p.value > 0.05 & p.value <= 0.1 ~ ".",
+    T ~ ""
+  )) %>% 
+  rename(odds_ratio = estimate) %>% 
+  select(term, odds_ratio, p_value = p.value, confidence) %>% 
+  kable()
+
+```
+
+<br>
+
+```{r}
+interact_plot(mod26, pred = medauf_womens_health, modx = justicemq,
+              #modx.values = c(-3.5, -1, 0, 1, 3.5),
+              # random
+              #modx.values = c(-1.65, -.55, -.08, .35, 1.5),
+              # quantiles
+              modx.values = c(-3.4, -.75, -.3, .59, 1.9),
+              modx.labels = c("More Liberal", "Moderately Liberal","Moderate", "Moderately Conservative", "More Conservative"),
+              colors = c("blue", "gray", "lightskyblue", "darksalmon", "red"),
+              #outcome.scale = "link",
+              x.label = "Frame Frequency",
+              y.label = "Probability of Voting in Favor of Repro. Rights")
+```
+
+
+```{r, eval=F}
+# interaction levels
+ef <- effect(term="justicemq:medauf_womens_health", mod = mod26)
+#ef1<-effect(term="pfemau*justicemq",xlevels=list(pfemau=c(0,.5,1)),mod=res0)  #used this in paper
+
+# as dataframe
+ef_df <-as.data.frame(ef) %>% mutate(medauf_womens_health = as.factor(medauf_womens_health))
+
+#By Color 
+ggplot(ef_df, aes(x = justicemq, y= fit, group = medauf_womens_health))+
+  geom_point()+
+  geom_line(size = 1, aes(linetype = medauf_womens_health))+
+  geom_ribbon(aes(ymin=fit-se, ymax=fit+se, fill=medauf_womens_health),alpha=0.5) + 
+  labs(title = "Frequency of Women's Health Frame and Justice Ideology", 
+       x= "Liberal                        Justice Ideology                         Conservative",
+       y="Vote for Opp.             Marginal Effects             Vote for Fem.") + 
+  guides(fill=guide_legend(reverse=T))+
+  guides(linetype=guide_legend(reverse=T))+
+  theme_bw() +
+  #scale_fill_grey()+
+  theme(plot.title = element_text(hjust = 0.5))+
+  labs(fill="Frame Frequency",
+       linetype="Frame Frequency")
+```
+
+\newpage 
+
+```{r}
+summary(mod26)
+```
+
+\newpage
+
+# Women's Rights
+
+```{r}
+mod27 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + 
+                medauf_womens_rights + medauf_womens_rights:justicemq,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+tidy(mod27,conf.int=F,exponentiate=T,effects="fixed") %>% 
+  mutate(across(where(is.numeric), ~round(.x, 4))) %>% 
+  mutate(probability_yes = round(estimate/(1+estimate),4)) %>% 
+  mutate(confidence = case_when(
+    p.value >= 0 & p.value <= 0.001 ~ "***", 
+    p.value > 0.001 & p.value <= 0.01 ~ "**",
+    p.value > 0.01 & p.value <= 0.05 ~ "*",
+    p.value > 0.05 & p.value <= 0.1 ~ ".",
+    T ~ ""
+  )) %>% 
+  rename(odds_ratio = estimate) %>% 
+  select(term, odds_ratio, p_value = p.value, confidence) %>% 
+  kable()
+```
+
+<br>
+
+```{r}
+interact_plot(mod27, pred = medauf_womens_rights, modx = justicemq,
+              #modx.values = c(-3.5, -1, 0, 1, 3.5),
+              # random
+              #modx.values = c(-1.65, -.55, -.08, .35, 1.5),
+              # quantiles
+              modx.values = c(-3.4, -.75, -.3, .59, 1.9),
+              modx.labels = c("More Liberal", "Moderately Liberal","Moderate", "Moderately Conservative", "More Conservative"),
+              colors = c("blue", "gray", "lightskyblue", "darksalmon", "red"),
+              #outcome.scale = "link",
+              x.label = "Frame Frequency",
+              y.label = "Probability of Voting in Favor of Repro. Rights")
+```
+
+
+```{r, eval=F}
+# interaction levels
+ef <- effect(term="justicemq:medauf_womens_rights", mod = mod27)
+#ef1<-effect(term="pfemau*justicemq",xlevels=list(pfemau=c(0,.5,1)),mod=res0)  #used this in paper
+
+# as dataframe
+ef_df <-as.data.frame(ef) %>% mutate(medauf_womens_rights = as.factor(medauf_womens_rights))
+
+#By Color 
+ggplot(ef_df, aes(x = justicemq, y= fit, group = medauf_womens_rights))+
+  geom_point()+
+  geom_line(size = 1, aes(linetype = medauf_womens_rights))+
+  geom_ribbon(aes(ymin=fit-se, ymax=fit+se, fill=medauf_womens_rights),alpha=0.5) + 
+  labs(title = "Frequency of Women's Rights Frame and Justice Ideology", 
+       x= "Liberal                        Justice Ideology                         Conservative",
+       y="Vote for Opp.             Marginal Effects             Vote for Fem.") + 
+  guides(fill=guide_legend(reverse=T))+
+  guides(linetype=guide_legend(reverse=T))+
+  theme_bw() +
+  #scale_fill_grey()+
+  theme(plot.title = element_text(hjust = 0.5))+
+  labs(fill="Frame Frequency",
+       linetype="Frame Frequency")
+```
+
+\newpage 
+
+```{r}
+summary(mod27)
+```
