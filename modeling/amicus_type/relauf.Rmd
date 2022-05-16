@@ -105,8 +105,8 @@ The following frames are significant:
 * 0:
 * 0.01:
 * 0.05: 
-* 0.10: 
-* 0.20: privacy (+)
+* 0.10: privacy (+)
+* 0.20: fetus (+), overturn roe (+)
 
 
 \newpage
@@ -116,7 +116,7 @@ The following frames are significant:
 
 ```{r}
 mod3 <- glmer(justicevot ~
-                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam +
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 + 
                 relauf_abortion_regret,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
@@ -147,7 +147,7 @@ summary(mod3)
 
 ```{r}
 mod4 <- glmer(justicevot ~
-                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + 
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 +  
                 relauf_bad_law,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
@@ -177,7 +177,7 @@ summary(mod4)
 
 ```{r}
 mod9 <- glmer(justicevot ~
-                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + 
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 +  
                 relauf_evidence,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
@@ -206,7 +206,7 @@ summary(mod9)
 
 ```{r}
 mod11 <- glmer(justicevot ~
-                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + 
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 +  
                 relauf_fetus,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
@@ -235,7 +235,7 @@ summary(mod11)
 
 ```{r}
 mod12 <- glmer(justicevot ~
-                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam +
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 + 
                 relauf_final_authority,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
@@ -265,7 +265,7 @@ summary(mod12)
 
 ```{r}
 mod14 <- glmer(justicevot ~
-                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + 
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 +  
                 relauf_morality_religion,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
@@ -294,7 +294,7 @@ summary(mod14)
 
 ```{r}
 mod15 <- glmer(justicevot ~
-                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam +
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 + 
                 relauf_overturn_roe,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
@@ -323,7 +323,7 @@ summary(mod15)
 
 ```{r}
 mod18 <- glmer(justicevot ~
-                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + 
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 +  
                 relauf_privacy,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
@@ -353,7 +353,7 @@ summary(mod18)
 
 ```{r}
 mod20 <- glmer(justicevot ~
-                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam +
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 + 
                 relauf_standing,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
@@ -383,7 +383,7 @@ summary(mod20)
 
 ```{r}
 mod22 <- glmer(justicevot ~
-                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + 
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 +  
                 relauf_uncertainty,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
@@ -412,7 +412,7 @@ summary(mod22)
 
 ```{r}
 mod23 <- glmer(justicevot ~
-                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + 
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 +  
                 relauf_undue_burden,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
@@ -441,7 +441,7 @@ summary(mod23)
 
 ```{r}
 mod24 <- glmer(justicevot ~
-                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + 
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 +  
                 relauf_untruthful,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
@@ -471,7 +471,7 @@ summary(mod24)
 
 ```{r}
 mod25 <- glmer(justicevot ~
-                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam +
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 + 
                 relauf_womens_future_life,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
@@ -500,7 +500,7 @@ summary(mod25)
 
 ```{r}
 mod26 <- glmer(justicevot ~
-                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + 
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 +  
                 relauf_womens_health,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
@@ -529,7 +529,7 @@ summary(mod26)
 
 ```{r}
 mod27 <- glmer(justicevot ~
-                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + 
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 +  
                 relauf_womens_rights,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
