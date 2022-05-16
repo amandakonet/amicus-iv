@@ -1,5 +1,5 @@
 ---
-title: "medauo Amicus Brief Models"
+title: "Medauo Amicus Brief Models"
 author: "Amanda Konet"
 date: "`r Sys.Date()`"
 output: pdf_document
@@ -132,7 +132,7 @@ The following frames are significant: (see excel)
 
 ```{r}
 mod3 <- glmer(justicevot ~
-                (1+justicemq|id) + justicemq + justicefem + lcdisdirfem + poppam + 
+                (1+justicemq|id) + justicemq + justicefem + lcdisdirfem + sgfem3 + poppam + 
                 medauo_abortion_regret + medauo_abortion_regret:justicemq,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
@@ -210,7 +210,7 @@ summary(mod3)
 
 ```{r}
 mod4 <- glmer(justicevot ~
-                (1+justicemq|id) + justicemq + justicefem + lcdisdirfem + poppam + 
+                (1+justicemq|id) + justicemq + justicefem + lcdisdirfem + sgfem3 + poppam + 
                 medauo_bad_law + medauo_bad_law:justicemq,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
@@ -287,7 +287,7 @@ summary(mod4)
 
 ```{r}
 mod9 <- glmer(justicevot ~
-                (1+justicemq|id) + justicemq + justicefem + lcdisdirfem + poppam + 
+                (1+justicemq|id) + justicemq + justicefem + lcdisdirfem + sgfem3 + poppam + 
                 medauo_evidence + medauo_evidence:justicemq,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
@@ -363,7 +363,7 @@ summary(mod9)
 
 ```{r}
 mod11 <- glmer(justicevot ~
-                (1+justicemq|id) + justicemq + justicefem + lcdisdirfem + poppam + 
+                (1+justicemq|id) + justicemq + justicefem + lcdisdirfem + sgfem3 + poppam + 
                 medauo_fetus + medauo_fetus:justicemq,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
@@ -439,7 +439,7 @@ summary(mod11)
 
 ```{r}
 mod12 <- glmer(justicevot ~
-                (1+justicemq|id) + justicemq + justicefem + lcdisdirfem + poppam + 
+                (1+justicemq|id) + justicemq + justicefem + lcdisdirfem + sgfem3 + poppam + 
                 medauo_final_authority + medauo_final_authority:justicemq,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
@@ -514,7 +514,7 @@ summary(mod12)
 
 ```{r}
 mod14 <- glmer(justicevot ~
-                (1+justicemq|id) + justicemq + justicefem + lcdisdirfem + poppam + 
+                (1+justicemq|id) + justicemq + justicefem + lcdisdirfem + sgfem3 + poppam + 
                 medauo_morality_religion + medauo_morality_religion:justicemq,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
@@ -590,7 +590,7 @@ summary(mod14)
 
 ```{r}
 mod18 <- glmer(justicevot ~
-               (1+justicemq|id) + justicemq + justicefem + lcdisdirfem + poppam + 
+               (1+justicemq|id) + justicemq + justicefem + lcdisdirfem + sgfem3 + poppam + 
                 medauo_privacy + medauo_privacy:justicemq,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
@@ -666,7 +666,7 @@ summary(mod18)
 
 ```{r}
 mod20 <- glmer(justicevot ~
-                (1+justicemq|id) + justicemq + justicefem + lcdisdirfem + poppam + 
+                (1+justicemq|id) + justicemq + justicefem + lcdisdirfem + sgfem3 + poppam + 
                 medauo_standing + medauo_standing:justicemq,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
@@ -742,7 +742,7 @@ summary(mod20)
 
 ```{r}
 mod23 <- glmer(justicevot ~
-                (1+justicemq|id) + justicemq + justicefem + lcdisdirfem + poppam + 
+                (1+justicemq|id) + justicemq + justicefem + lcdisdirfem + sgfem3 + poppam + 
                 medauo_undue_burden + medauo_undue_burden:justicemq,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
@@ -818,7 +818,7 @@ summary(mod23)
 
 ```{r}
 mod25 <- glmer(justicevot ~
-                (1+justicemq|id) + justicemq + justicefem + lcdisdirfem + poppam + 
+                (1+justicemq|id) + justicemq + justicefem + lcdisdirfem + sgfem3 + poppam + 
                 medauo_womens_future_life + medauo_womens_future_life:justicemq,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
@@ -894,7 +894,7 @@ summary(mod25)
 
 ```{r}
 mod26 <- glmer(justicevot ~
-                (1+justicemq|id) + justicemq + justicefem + lcdisdirfem + poppam + 
+                (1+justicemq|id) + justicemq + justicefem + lcdisdirfem + sgfem3 + poppam + 
                 medauo_womens_health + medauo_womens_health:justicemq,
               family = binomial, data = data,  
               nAGQ = 0, control=glmerControl(
