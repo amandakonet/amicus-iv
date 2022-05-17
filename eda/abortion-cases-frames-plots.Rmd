@@ -1,7 +1,6 @@
 ---
-title: "abortion cases"
+title: "Frame X Amici Frequencies by Case"
 author: "Amanda Konet"
-date: "`r date()`"
 output: pdf_document
 ---
 
@@ -11,28 +10,131 @@ library(tidyverse)
 library(ggplot2)
 library(boxr)
 box_auth()
+final_cases <- "949901868853"
 ```
-
 
 ```{r}
-df <- box_read("949904531983", read_fun = readr::read_csv)
+# data is 1 row per justice vote; convert to 1 row per case
+df <- box_read(final_cases) %>% 
+  filter(justicevot != "NA") %>% 
+  filter(case != "Gonzales v PP") %>% 
+  mutate(across(c(forgauf_abortion_different:forgauf_womens_rights,
+                  legauf_abortion_different:legauo_womens_rights,
+                  lifauo_abortion_different:medauo_womens_rights,
+                  relauf_abortion_different:relauo_womens_rights),
+                ~replace_na(.x, 0))) %>% 
+  distinct(case, ddate2,
+           forgauf_privacy, forgauf_undue_burden, forgauf_womens_health, forgauf_evidence,
+           medauf_womens_future_life, medauf_womens_health,
+           lifauo_undue_burden,
+           relauo_undue_burden, relauo_abortion_regret, relauo_fetus,
+           medauo_final_authority, medauo_evidence, medauo_morality_religion) %>% 
+  mutate(case = case_when(
+    case == "Anders v Floyd" ~ "Anders",
+    case == "Ayotte v PP" ~ "Ayotte",
+    case == "Beal v Doe" ~ "Beal",
+    case == "Bellotti v Baird 1976" ~ "Bellotti 76",
+    case == "Bellotti v Baird 1979" ~ "Bellotti 79",
+    case == "Bigelow v Virginia" ~ "Bigelow",
+    case == "Bray v Alexandria Womens Health Clinic" ~ "Bray",
+    case == "City of Akron v Akron Center" ~ "City of Akron",
+    case == "Colautti v Franklin" ~ "Colautti",
+    case == "Diamond v Charles" ~ "Diamond",
+    case == "Doe v Bolton" ~ "Bolton",
+    case == "Frisby v Schultz" ~ "Frisby",
+    case == "Gonzales v Carhart" ~ "Gonzales",
+    case == "H.L. v Matheson" ~ "H.L.",
+    case == "Harris v McRae" ~ "Harris",
+    case == "Hill v Colorado" ~ "Hill",
+    case == "Hodgson v Minnesota" ~ "Hodgson",
+    case == "Scheidler v NOW 2003" ~ "Scheidler 03",
+    case == "Scheidler v Now 2006" ~ "Scheidler 06",
+    case == "Madsen v Womens Health Center" ~ "Madsen",
+    case == "June v Russo" ~ "June",
+    case == "Maher v Roe" ~ "Maher",
+    case == "McCullen v Coakley" ~ "McCullen",
+    case == "NOW v Scheidler 1994" ~ "Scheidler 94",
+    case == "Ohio v Akron Center" ~ "Ohio",
+    case == "PP v Ashcroft" ~ "Ashcroft",
+    case == "PP v Danforth" ~ "Danforth",
+    case == "PP v Casey" ~ "Casey",
+    case == "Poelker v Doe" ~ "Poelker",
+    case == "Roe v Wade" ~ "Roe",
+    case == "Rust v Sullivan" ~ "Rust",
+    case == "Schenck v Pro-Choice Network" ~ "Schenck",
+    case == "Simopoulos v Virginia" ~ "Simopoulos",
+    case == "Singleton v Wulff" ~ "Singleton",
+    case == "Stenberg v Carhart" ~ "Stenberg",
+    case == "Thornburgh v American College of OBGYNs" ~ "Thornburgh",
+    case == "United States v Vuitch" ~ "Vuitch",
+    case == "Webster v Reproductive Health Services" ~ "Webster",
+    case == "WWH v Hellerstedt" ~ "WWH",
+    case == "Williams v Zbaraz" ~ "Williams",
+    T ~ case
+  ))
 ```
 
+# Cases
 
-# Abortion Negative II
+```{r, eval=F, echo=T}
+case == "Anders v Floyd" ~ "Anders",
+case == "Ayotte v PP" ~ "Ayotte",
+case == "Beal v Doe" ~ "Beal",
+case == "Bellotti v Baird 1976" ~ "Bellotti 76",
+case == "Bellotti v Baird 1979" ~ "Bellotti 79",
+case == "Bigelow v Virginia" ~ "Bigelow",
+case == "Bray v Alexandria Womens Health Clinic" ~ "Bray",
+case == "City of Akron v Akron Center" ~ "City of Akron",
+case == "Colautti v Franklin" ~ "Colautti",
+case == "Diamond v Charles" ~ "Diamond",
+case == "Doe v Bolton" ~ "Bolton",
+case == "Frisby v Schultz" ~ "Frisby",
+case == "Gonzales v Carhart" ~ "Gonzales",
+case == "H.L. v Matheson" ~ "H.L.",
+case == "Harris v McRae" ~ "Harris",
+case == "Hill v Colorado" ~ "Hill",
+case == "Hodgson v Minnesota" ~ "Hodgson",
+case == "Scheidler v NOW 2003" ~ "Scheidler 03",
+case == "Scheidler v Now 2006" ~ "Scheidler 06",
+case == "Madsen v Womens Health Center" ~ "Madsen",
+case == "June v Russo" ~ "June",
+case == "Maher v Roe" ~ "Maher",
+case == "McCullen v Coakley" ~ "McCullen",
+case == "NOW v Scheidler 1994" ~ "Scheidler 94",
+case == "Ohio v Akron Center" ~ "Ohio",
+case == "PP v Ashcroft" ~ "Ashcroft",
+case == "PP v Danforth" ~ "Danforth",
+case == "PP v Casey" ~ "Casey",
+case == "Poelker v Doe" ~ "Poelker",
+case == "Roe v Wade" ~ "Roe",
+case == "Rust v Sullivan" ~ "Rust",
+case == "Schenck v Pro-Choice Network" ~ "Schenck",
+case == "Simopoulos v Virginia" ~ "Simopoulos",
+case == "Singleton v Wulff" ~ "Singleton",
+case == "Stenberg v Carhart" ~ "Stenberg",
+case == "Thornburgh v American College of OBGYNs" ~ "Thornburgh",
+case == "United States v Vuitch" ~ "Vuitch",
+case == "Webster v Reproductive Health Services" ~ "Webster",
+case == "WWH v Hellerstedt" ~ "WWH",
+case == "Williams v Zbaraz" ~ "Williams"
+```
 
+\newpage
+
+# Reproductive Rights
+
+## Forgauf & Privacy
 
 ```{r}
 df %>% 
-  select(case, ddate2, ) %>% 
-  mutate(title = "Word/Phrase Count for Abortion Negative II Frame",
-         year = lubridate::year(decision_date)) %>% 
-  ggplot(., aes(x = reorder(case, decision_date), y = anii_freq)) +
+  select(case, ddate2, forgauf_privacy) %>% 
+  mutate(year = lubridate::year(ddate2)) %>% 
+  ggplot(., aes(x = reorder(case, ddate2), y = forgauf_privacy)) +
   geom_bar(stat = "identity") +
   labs(
     x = "Case",
-    y = "Frequency of frame words/phrases in decision (divided by total word count)",
-    title = "Word/Phrase Count for Abortion Negative II Frame"
+    y = "Frequency of frame words/phrases in amici (divided by total word ct)",
+    title = "Word/Phrase Count for FORG Privacy Frame"
   ) + 
   facet_grid(~ year, switch = "x", scales = "free_x", space = "free_x") +
   theme_bw() +
@@ -48,278 +150,12 @@ df %>%
     panel.spacing = unit(0, "pt"), 
     strip.background = element_blank(),
     strip.placement = "outside",
-    strip.text = element_text(color = "#afafaf", size = 7.4),
+    strip.text = element_text(color = "gray10", size = 7.4, angle = 45),
     # axis title
     axis.title = element_text(color = "#666666", size = 8),
     # axis text
-    axis.text.x = element_text(color = "#afafaf", size = 7.4, vjust = 0.9),
-    axis.text.y = element_text(color = "darkgray", size = 7),
-    # axis ticks
-    axis.ticks.x = element_line(colour = "#bdbdbd", size = 0.4),
-    axis.ticks.y = element_blank(),
-    # title
-    plot.title = element_text(color = "#666666", size = 9.1, hjust = 0.5)
-  )
-```
-
-
-\newpage
-
-# actor_couple
-
-```{r}
-dec_frames %>% 
-  select(case, decision_date, ac_freq) %>% 
-  mutate(title = "Word/Phrase Count for Actor Couple Frame",
-         year = lubridate::year(decision_date)) %>% 
-  ggplot(., aes(x = reorder(case, year), y = ac_freq)) +
-  geom_bar(stat = "identity") +
-  labs(
-    x = "Case",
-    y = "Frequency of frame words/phrases in decision (divided by total word count)",
-    title = "Word/Phrase Count for Actor Couple Frame"
-  ) + 
-  facet_grid(~ year, switch = "x", scales = "free_x", space = "free_x") +
-  theme_bw() +
-  theme(
-    # grid lines + background
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    panel.background = element_rect(fill = "white", size = 0.1),
-    panel.border = element_blank(),
-    plot.background = element_rect(color = "#eaeaea", size = 0.4),
-    axis.line = element_line(color = "#eaeaea", size = 0.4),
-    # facet format
-    panel.spacing = unit(0, "pt"), 
-    strip.background = element_blank(),
-    strip.placement = "outside",
-    strip.text = element_text(color = "#afafaf", size = 7.4),
-    # axis title
-    axis.title = element_text(color = "#666666", size = 8),
-    # axis text
-    axis.text.x = element_text(color = "#afafaf", size = 7.4, vjust = 0.9),
-    axis.text.y = element_text(color = "darkgray", size = 7),
-    # axis ticks
-    axis.ticks.x = element_line(colour = "#bdbdbd", size = 0.4),
-    axis.ticks.y = element_blank(),
-    # title
-    plot.title = element_text(color = "#666666", size = 9.1, hjust = 0.5)
-  )
-```
-
-
-\newpage
-
-# actor_fetus
-
-```{r}
-dec_frames %>% 
-  select(case, decision_date, af_freq) %>% 
-  mutate(year = lubridate::year(decision_date)) %>% 
-  ggplot(., aes(x = reorder(case, year), y = af_freq)) +
-  geom_bar(stat = "identity") +
-  labs(
-    x = "Case",
-    y = "Frequency of frame words/phrases in decision (divided by total word count)",
-    title = "Word/Phrase Count for Actor Fetus Frame"
-  ) + 
-  facet_grid(~ year, switch = "x", scales = "free_x", space = "free_x") +
-  theme_bw() +
-  theme(
-    # grid lines + background
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    panel.background = element_rect(fill = "white", size = 0.1),
-    panel.border = element_blank(),
-    plot.background = element_rect(color = "#eaeaea", size = 0.4),
-    axis.line = element_line(color = "#eaeaea", size = 0.4),
-    # facet format
-    panel.spacing = unit(0, "pt"), 
-    strip.background = element_blank(),
-    strip.placement = "outside",
-    strip.text = element_text(color = "#afafaf", size = 7.4),
-    # axis title
-    axis.title = element_text(color = "#666666", size = 8),
-    # axis text
-    axis.text.x = element_text(color = "#afafaf", size = 7.4, vjust = 0.9),
-    axis.text.y = element_text(color = "darkgray", size = 7),
-    # axis ticks
-    axis.ticks.x = element_line(colour = "#bdbdbd", size = 0.4),
-    axis.ticks.y = element_blank(),
-    # title
-    plot.title = element_text(color = "#666666", size = 9.1, hjust = 0.5)
-  )
-```
-
-
-\newpage
-
-# actor_physician
-
-```{r}
-dec_frames %>% 
-  select(case, decision_date, ap_freq) %>% 
-  mutate(year = lubridate::year(decision_date)) %>% 
-  ggplot(., aes(x = reorder(case, year), y = ap_freq)) +
-  geom_bar(stat = "identity") +
-  labs(
-    x = "Case",
-    y = "Frequency of frame words/phrases in decision (divided by total word count)",
-    title = "Word/Phrase Count for Actor Physician Frame"
-  ) + 
-  facet_grid(~ year, switch = "x", scales = "free_x", space = "free_x") +
-  theme_bw() +
-  theme(
-    # grid lines + background
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    panel.background = element_rect(fill = "white", size = 0.1),
-    panel.border = element_blank(),
-    plot.background = element_rect(color = "#eaeaea", size = 0.4),
-    axis.line = element_line(color = "#eaeaea", size = 0.4),
-    # facet format
-    panel.spacing = unit(0, "pt"), 
-    strip.background = element_blank(),
-    strip.placement = "outside",
-    strip.text = element_text(color = "#afafaf", size = 7.4),
-    # axis title
-    axis.title = element_text(color = "#666666", size = 8),
-    # axis text
-    axis.text.x = element_text(color = "#afafaf", size = 7.4, vjust = 0.9),
-    axis.text.y = element_text(color = "darkgray", size = 7),
-    # axis ticks
-    axis.ticks.x = element_line(colour = "#bdbdbd", size = 0.4),
-    axis.ticks.y = element_blank(),
-    # title
-    plot.title = element_text(color = "#666666", size = 9.1, hjust = 0.5)
-  )
-```
-
-
-
-\newpage
-
-# compulsoryII
-
-```{r}
-dec_frames %>% 
-  select(case, decision_date, c2_freq) %>% 
-  mutate(year = lubridate::year(decision_date)) %>% 
-  ggplot(., aes(x = reorder(case, year), y = c2_freq)) +
-  geom_bar(stat = "identity") +
-  labs(
-    x = "Case",
-    y = "Frequency of frame words/phrases in decision (divided by total word count)",
-    title = "Word/Phrase Count for Compulsory II Frame"
-  ) + 
-  facet_grid(~ year, switch = "x", scales = "free_x", space = "free_x") +
-  theme_bw() +
-  theme(
-    # grid lines + background
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    panel.background = element_rect(fill = "white", size = 0.1),
-    panel.border = element_blank(),
-    plot.background = element_rect(color = "#eaeaea", size = 0.4),
-    axis.line = element_line(color = "#eaeaea", size = 0.4),
-    # facet format
-    panel.spacing = unit(0, "pt"), 
-    strip.background = element_blank(),
-    strip.placement = "outside",
-    strip.text = element_text(color = "#afafaf", size = 7.4),
-    # axis title
-    axis.title = element_text(color = "#666666", size = 8),
-    # axis text
-    axis.text.x = element_text(color = "#afafaf", size = 7.4, vjust = 0.9),
-    axis.text.y = element_text(color = "darkgray", size = 7),
-    # axis ticks
-    axis.ticks.x = element_line(colour = "#bdbdbd", size = 0.4),
-    axis.ticks.y = element_blank(),
-    # title
-    plot.title = element_text(color = "#666666", size = 9.1, hjust = 0.5)
-  )
-```
-
-
-\newpage
-
-# compulsoryMotherhood
-
-```{r}
-dec_frames %>% 
-  select(case, decision_date, cm_freq) %>% 
-  mutate(year = lubridate::year(decision_date)) %>% 
-  ggplot(., aes(x = reorder(case, year), y = cm_freq)) +
-  geom_bar(stat = "identity") +
-  labs(
-    x = "Case",
-    y = "Frequency of frame words/phrases in decision (divided by total word count)",
-    title = "Word/Phrase Count for Compulsory Motherhood Frame"
-  ) + 
-  facet_grid(~ year, switch = "x", scales = "free_x", space = "free_x") +
-  theme_bw() +
-  theme(
-    # grid lines + background
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    panel.background = element_rect(fill = "white", size = 0.1),
-    panel.border = element_blank(),
-    plot.background = element_rect(color = "#eaeaea", size = 0.4),
-    axis.line = element_line(color = "#eaeaea", size = 0.4),
-    # facet format
-    panel.spacing = unit(0, "pt"), 
-    strip.background = element_blank(),
-    strip.placement = "outside",
-    strip.text = element_text(color = "#afafaf", size = 7.4),
-    # axis title
-    axis.title = element_text(color = "#666666", size = 8),
-    # axis text
-    axis.text.x = element_text(color = "#afafaf", size = 7.4, vjust = 0.9),
-    axis.text.y = element_text(color = "darkgray", size = 7),
-    # axis ticks
-    axis.ticks.x = element_line(colour = "#bdbdbd", size = 0.4),
-    axis.ticks.y = element_blank(),
-    # title
-    plot.title = element_text(color = "#666666", size = 9.1, hjust = 0.5)
-  )
-```
-
-
-\newpage
-
-# favorChildbirth
-
-```{r}
-dec_frames %>% 
-  select(case, decision_date, fc_freq) %>% 
-  mutate(year = lubridate::year(decision_date)) %>% 
-  ggplot(., aes(x = reorder(case, year), y = fc_freq)) +
-  geom_bar(stat = "identity") +
-  labs(
-    x = "Case",
-    y = "Frequency of frame words/phrases in decision (divided by total word count)",
-    title = "Word/Phrase Count for Favor Childbirth Frame"
-  ) + 
-  facet_grid(~ year, switch = "x", scales = "free_x", space = "free_x") +
-  theme_bw() +
-  theme(
-    # grid lines + background
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    panel.background = element_rect(fill = "white", size = 0.1),
-    panel.border = element_blank(),
-    plot.background = element_rect(color = "#eaeaea", size = 0.4),
-    axis.line = element_line(color = "#eaeaea", size = 0.4),
-    # facet format
-    panel.spacing = unit(0, "pt"), 
-    strip.background = element_blank(),
-    strip.placement = "outside",
-    strip.text = element_text(color = "#afafaf", size = 7.4),
-    # axis title
-    axis.title = element_text(color = "#666666", size = 8),
-    # axis text
-    axis.text.x = element_text(color = "#afafaf", size = 7.4, vjust = 0.9),
-    axis.text.y = element_text(color = "darkgray", size = 7),
+    axis.text.x = element_text(color = "gray45", size = 7.4, angle = 90, vjust = 0.5, hjust=1),
+    axis.text.y = element_text(color = "gray45", size = 7),
     # axis ticks
     axis.ticks.x = element_line(colour = "#bdbdbd", size = 0.4),
     axis.ticks.y = element_blank(),
@@ -330,18 +166,18 @@ dec_frames %>%
 
 \newpage
 
-# health
+## Forgauf & Undue Burden
 
 ```{r}
-dec_frames %>% 
-  select(case, decision_date, he_freq) %>% 
-  mutate(year = lubridate::year(decision_date)) %>% 
-  ggplot(., aes(x = reorder(case, year), y = he_freq)) +
+df %>% 
+  select(case, ddate2, forgauf_undue_burden) %>% 
+  mutate(year = lubridate::year(ddate2)) %>% 
+  ggplot(., aes(x = reorder(case, ddate2), y = forgauf_undue_burden)) +
   geom_bar(stat = "identity") +
   labs(
     x = "Case",
-    y = "Frequency of frame words/phrases in decision (divided by total word count)",
-    title = "Word/Phrase Count for Health Frame"
+    y = "Frequency of frame words/phrases in amici (divided by total word ct)",
+    title = "Word/Phrase Count for FORG Undue Burden Frame"
   ) + 
   facet_grid(~ year, switch = "x", scales = "free_x", space = "free_x") +
   theme_bw() +
@@ -357,12 +193,12 @@ dec_frames %>%
     panel.spacing = unit(0, "pt"), 
     strip.background = element_blank(),
     strip.placement = "outside",
-    strip.text = element_text(color = "#afafaf", size = 7.4),
+    strip.text = element_text(color = "gray10", size = 7.4, angle = 45),
     # axis title
     axis.title = element_text(color = "#666666", size = 8),
     # axis text
-    axis.text.x = element_text(color = "#afafaf", size = 7.4, vjust = 0.9),
-    axis.text.y = element_text(color = "darkgray", size = 7),
+    axis.text.x = element_text(color = "gray45", size = 7.4, angle = 90, vjust = 0.5, hjust=1),
+    axis.text.y = element_text(color = "gray45", size = 7),
     # axis ticks
     axis.ticks.x = element_line(colour = "#bdbdbd", size = 0.4),
     axis.ticks.y = element_blank(),
@@ -370,22 +206,22 @@ dec_frames %>%
     plot.title = element_text(color = "#666666", size = 9.1, hjust = 0.5)
   )
 ```
-
 
 \newpage
 
-# intersectionality
+
+## Medauf & Women's Futures
 
 ```{r}
-dec_frames %>% 
-  select(case, decision_date, in_freq) %>% 
-  mutate(year = lubridate::year(decision_date)) %>% 
-  ggplot(., aes(x = reorder(case, year), y = in_freq)) +
+df %>% 
+  select(case, ddate2, medauf_womens_future_life) %>% 
+  mutate(year = lubridate::year(ddate2)) %>% 
+  ggplot(., aes(x = reorder(case, ddate2), y = medauf_womens_future_life)) +
   geom_bar(stat = "identity") +
   labs(
     x = "Case",
-    y = "Frequency of frame words/phrases in decision (divided by total word count)",
-    title = "Word/Phrase Count for Intersectionality Frame"
+    y = "Frequency of frame words/phrases in amici (divided by total word ct)",
+    title = "Word/Phrase Count for RR Med Women's Futures Frame"
   ) + 
   facet_grid(~ year, switch = "x", scales = "free_x", space = "free_x") +
   theme_bw() +
@@ -401,12 +237,12 @@ dec_frames %>%
     panel.spacing = unit(0, "pt"), 
     strip.background = element_blank(),
     strip.placement = "outside",
-    strip.text = element_text(color = "#afafaf", size = 7.4),
+    strip.text = element_text(color = "gray10", size = 7.4, angle = 45),
     # axis title
     axis.title = element_text(color = "#666666", size = 8),
     # axis text
-    axis.text.x = element_text(color = "#afafaf", size = 7.4, vjust = 0.9),
-    axis.text.y = element_text(color = "darkgray", size = 7),
+    axis.text.x = element_text(color = "gray45", size = 7.4, angle = 90, vjust = 0.5, hjust=1),
+    axis.text.y = element_text(color = "gray45", size = 7),
     # axis ticks
     axis.ticks.x = element_line(colour = "#bdbdbd", size = 0.4),
     axis.ticks.y = element_blank(),
@@ -414,22 +250,22 @@ dec_frames %>%
     plot.title = element_text(color = "#666666", size = 9.1, hjust = 0.5)
   )
 ```
-
 
 \newpage
 
-# morality
+
+## Forgauf & Women's Health
 
 ```{r}
-dec_frames %>% 
-  select(case, decision_date, mo_freq) %>% 
-  mutate(year = lubridate::year(decision_date)) %>% 
-  ggplot(., aes(x = reorder(case, year), y = mo_freq)) +
+df %>% 
+  select(case, ddate2, forgauf_womens_health) %>% 
+  mutate(year = lubridate::year(ddate2)) %>% 
+  ggplot(., aes(x = reorder(case, ddate2), y = forgauf_womens_health)) +
   geom_bar(stat = "identity") +
   labs(
     x = "Case",
-    y = "Frequency of frame words/phrases in decision (divided by total word count)",
-    title = "Word/Phrase Count for Morality Frame"
+    y = "Frequency of frame words/phrases in amici (divided by total word ct)",
+    title = "Word/Phrase Count for FORG Women's Health Frame"
   ) + 
   facet_grid(~ year, switch = "x", scales = "free_x", space = "free_x") +
   theme_bw() +
@@ -445,12 +281,12 @@ dec_frames %>%
     panel.spacing = unit(0, "pt"), 
     strip.background = element_blank(),
     strip.placement = "outside",
-    strip.text = element_text(color = "#afafaf", size = 7.4),
+    strip.text = element_text(color = "gray10", size = 7.4, angle = 45),
     # axis title
     axis.title = element_text(color = "#666666", size = 8),
     # axis text
-    axis.text.x = element_text(color = "#afafaf", size = 7.4, vjust = 0.9),
-    axis.text.y = element_text(color = "darkgray", size = 7),
+    axis.text.x = element_text(color = "gray45", size = 7.4, angle = 90, vjust = 0.5, hjust=1),
+    axis.text.y = element_text(color = "gray45", size = 7),
     # axis ticks
     axis.ticks.x = element_line(colour = "#bdbdbd", size = 0.4),
     axis.ticks.y = element_blank(),
@@ -458,22 +294,21 @@ dec_frames %>%
     plot.title = element_text(color = "#666666", size = 9.1, hjust = 0.5)
   )
 ```
-
 
 \newpage
 
-# psy_harm
+## Medauf & Women's Health
 
 ```{r}
-dec_frames %>% 
-  select(case, decision_date, ph_freq) %>% 
-  mutate(year = lubridate::year(decision_date)) %>% 
-  ggplot(., aes(x = reorder(case, year), y = ph_freq)) +
+df %>% 
+  select(case, ddate2, medauf_womens_health) %>% 
+  mutate(year = lubridate::year(ddate2)) %>% 
+  ggplot(., aes(x = reorder(case, ddate2), y = medauf_womens_health)) +
   geom_bar(stat = "identity") +
   labs(
     x = "Case",
-    y = "Frequency of frame words/phrases in decision (divided by total word count)",
-    title = "Word/Phrase Count for Psycological Harm Frame"
+    y = "Frequency of frame words/phrases in amici (divided by total word ct)",
+    title = "Word/Phrase Count for RR Med Women's Health Frame"
   ) + 
   facet_grid(~ year, switch = "x", scales = "free_x", space = "free_x") +
   theme_bw() +
@@ -489,12 +324,12 @@ dec_frames %>%
     panel.spacing = unit(0, "pt"), 
     strip.background = element_blank(),
     strip.placement = "outside",
-    strip.text = element_text(color = "#afafaf", size = 7.4),
+    strip.text = element_text(color = "gray10", size = 7.4, angle = 45),
     # axis title
     axis.title = element_text(color = "#666666", size = 8),
     # axis text
-    axis.text.x = element_text(color = "#afafaf", size = 7.4, vjust = 0.9),
-    axis.text.y = element_text(color = "darkgray", size = 7),
+    axis.text.x = element_text(color = "gray45", size = 7.4, angle = 90, vjust = 0.5, hjust=1),
+    axis.text.y = element_text(color = "gray45", size = 7),
     # axis ticks
     axis.ticks.x = element_line(colour = "#bdbdbd", size = 0.4),
     axis.ticks.y = element_blank(),
@@ -502,23 +337,21 @@ dec_frames %>%
     plot.title = element_text(color = "#666666", size = 9.1, hjust = 0.5)
   )
 ```
-
-
 
 \newpage
 
-# womanCitizenship
+## Forgauf & Expert Evidence
 
 ```{r}
-dec_frames %>% 
-  select(case, decision_date, wc_freq) %>% 
-  mutate(year = lubridate::year(decision_date)) %>% 
-  ggplot(., aes(x = reorder(case, year), y = wc_freq)) +
+df %>% 
+  select(case, ddate2, forgauf_evidence) %>% 
+  mutate(year = lubridate::year(ddate2)) %>% 
+  ggplot(., aes(x = reorder(case, ddate2), y = forgauf_evidence)) +
   geom_bar(stat = "identity") +
   labs(
     x = "Case",
-    y = "Frequency of frame words/phrases in decision (divided by total word count)",
-    title = "Word/Phrase Count for Woman Citizenship Frame"
+    y = "Frequency of frame words/phrases in amici (divided by total word ct)",
+    title = "Word/Phrase Count for FORG Expert Evidence Frame"
   ) + 
   facet_grid(~ year, switch = "x", scales = "free_x", space = "free_x") +
   theme_bw() +
@@ -534,12 +367,12 @@ dec_frames %>%
     panel.spacing = unit(0, "pt"), 
     strip.background = element_blank(),
     strip.placement = "outside",
-    strip.text = element_text(color = "#afafaf", size = 7.4),
+    strip.text = element_text(color = "gray10", size = 7.4, angle = 45),
     # axis title
     axis.title = element_text(color = "#666666", size = 8),
     # axis text
-    axis.text.x = element_text(color = "#afafaf", size = 7.4, vjust = 0.9),
-    axis.text.y = element_text(color = "darkgray", size = 7),
+    axis.text.x = element_text(color = "gray45", size = 7.4, angle = 90, vjust = 0.5, hjust=1),
+    axis.text.y = element_text(color = "gray45", size = 7),
     # axis ticks
     axis.ticks.x = element_line(colour = "#bdbdbd", size = 0.4),
     axis.ticks.y = element_blank(),
@@ -547,4 +380,312 @@ dec_frames %>%
     plot.title = element_text(color = "#666666", size = 9.1, hjust = 0.5)
   )
 ```
+
+\newpage
+
+
+# Antiabortion
+
+## Lifauo & Undue Burden
+
+```{r}
+df %>% 
+  select(case, ddate2, lifauo_undue_burden) %>% 
+  mutate(year = lubridate::year(ddate2),
+         ) %>% 
+  ggplot(., aes(x = reorder(case, ddate2), y = lifauo_undue_burden)) +
+  geom_bar(stat = "identity") +
+  labs(
+    x = "Case",
+    y = "Frequency of frame words/phrases in amici (divided by total word ct)",
+    title = "Word/Phrase Count for Antiabortion Undue Burden Frame"
+  ) + 
+  facet_grid(~ year, switch = "x", scales = "free_x", space = "free_x") +
+  theme_bw() +
+  theme(
+    # grid lines + background
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(fill = "white", size = 0.1),
+    panel.border = element_blank(),
+    plot.background = element_rect(color = "#eaeaea", size = 0.4),
+    axis.line = element_line(color = "#eaeaea", size = 0.4),
+    # facet format
+    panel.spacing = unit(0, "pt"), 
+    strip.background = element_blank(),
+    strip.placement = "outside",
+    strip.text = element_text(color = "gray10", size = 7.4, angle = 45),
+    # axis title
+    axis.title = element_text(color = "#666666", size = 8),
+    # axis text
+    axis.text.x = element_text(color = "gray45", size = 7.4, angle = 90, vjust = 0.5, hjust=1),
+    axis.text.y = element_text(color = "gray45", size = 7),
+    # axis ticks
+    axis.ticks.x = element_line(colour = "#bdbdbd", size = 0.4),
+    axis.ticks.y = element_blank(),
+    # title
+    plot.title = element_text(color = "#666666", size = 9.1, hjust = 0.5)
+  )
+```
+
+\newpage
+
+## Relauo & Undue Burden
+
+```{r}
+df %>% 
+  select(case, ddate2, relauo_undue_burden) %>% 
+  mutate(year = lubridate::year(ddate2)) %>% 
+  ggplot(., aes(x = reorder(case, ddate2), y = relauo_undue_burden)) +
+  geom_bar(stat = "identity") +
+  labs(
+    x = "Case",
+    y = "Frequency of frame words/phrases in amici (divided by total word ct)",
+    title = "Word/Phrase Count for AA Rel Undue Burden Frame"
+  ) + 
+  facet_grid(~ year, switch = "x", scales = "free_x", space = "free_x") +
+  theme_bw() +
+  theme(
+    # grid lines + background
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(fill = "white", size = 0.1),
+    panel.border = element_blank(),
+    plot.background = element_rect(color = "#eaeaea", size = 0.4),
+    axis.line = element_line(color = "#eaeaea", size = 0.4),
+    # facet format
+    panel.spacing = unit(0, "pt"), 
+    strip.background = element_blank(),
+    strip.placement = "outside",
+    strip.text = element_text(color = "gray10", size = 7.4, angle = 45),
+    # axis title
+    axis.title = element_text(color = "#666666", size = 8),
+    # axis text
+    axis.text.x = element_text(color = "gray45", size = 7.4, angle = 90, vjust = 0.5, hjust=1),
+    axis.text.y = element_text(color = "gray45", size = 7),
+    # axis ticks
+    axis.ticks.x = element_line(colour = "#bdbdbd", size = 0.4),
+    axis.ticks.y = element_blank(),
+    # title
+    plot.title = element_text(color = "#666666", size = 9.1, hjust = 0.5)
+  )
+```
+
+\newpage
+
+## Medauo & Final Authority
+
+```{r}
+df %>% 
+  select(case, ddate2, medauo_final_authority) %>% 
+  mutate(year = lubridate::year(ddate2)) %>% 
+  ggplot(., aes(x = reorder(case, ddate2), y = medauo_final_authority)) +
+  geom_bar(stat = "identity") +
+  labs(
+    x = "Case",
+    y = "Frequency of frame words/phrases in amici (divided by total word ct)",
+    title = "Word/Phrase Count for AA Med Final Authority Frame"
+  ) + 
+  facet_grid(~ year, switch = "x", scales = "free_x", space = "free_x") +
+  theme_bw() +
+  theme(
+    # grid lines + background
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(fill = "white", size = 0.1),
+    panel.border = element_blank(),
+    plot.background = element_rect(color = "#eaeaea", size = 0.4),
+    axis.line = element_line(color = "#eaeaea", size = 0.4),
+    # facet format
+    panel.spacing = unit(0, "pt"), 
+    strip.background = element_blank(),
+    strip.placement = "outside",
+    strip.text = element_text(color = "gray10", size = 7.4, angle = 45),
+    # axis title
+    axis.title = element_text(color = "#666666", size = 8),
+    # axis text
+    axis.text.x = element_text(color = "gray45", size = 7.4, angle = 90, vjust = 0.5, hjust=1),
+    axis.text.y = element_text(color = "gray45", size = 7),
+    # axis ticks
+    axis.ticks.x = element_line(colour = "#bdbdbd", size = 0.4),
+    axis.ticks.y = element_blank(),
+    # title
+    plot.title = element_text(color = "#666666", size = 9.1, hjust = 0.5)
+  )
+```
+
+\newpage
+
+## Relauo & Abortion Regret
+
+```{r}
+df %>% 
+  select(case, ddate2, relauo_abortion_regret) %>% 
+  mutate(year = lubridate::year(ddate2)) %>% 
+  ggplot(., aes(x = reorder(case, ddate2), y = relauo_abortion_regret)) +
+  geom_bar(stat = "identity") +
+  labs(
+    x = "Case",
+    y = "Frequency of frame words/phrases in amici (divided by total word ct)",
+    title = "Word/Phrase Count for AA Rel Abortion Regret Frame"
+  ) + 
+  facet_grid(~ year, switch = "x", scales = "free_x", space = "free_x") +
+  theme_bw() +
+  theme(
+    # grid lines + background
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(fill = "white", size = 0.1),
+    panel.border = element_blank(),
+    plot.background = element_rect(color = "#eaeaea", size = 0.4),
+    axis.line = element_line(color = "#eaeaea", size = 0.4),
+    # facet format
+    panel.spacing = unit(0, "pt"), 
+    strip.background = element_blank(),
+    strip.placement = "outside",
+    strip.text = element_text(color = "gray10", size = 7.4, angle = 45),
+    # axis title
+    axis.title = element_text(color = "#666666", size = 8),
+    # axis text
+    axis.text.x = element_text(color = "gray45", size = 7.4, angle = 90, vjust = 0.5, hjust=1),
+    axis.text.y = element_text(color = "gray45", size = 7),
+    # axis ticks
+    axis.ticks.x = element_line(colour = "#bdbdbd", size = 0.4),
+    axis.ticks.y = element_blank(),
+    # title
+    plot.title = element_text(color = "#666666", size = 9.1, hjust = 0.5)
+  )
+```
+
+\newpage
+
+## Medauo & Evidence
+
+```{r}
+df %>% 
+  select(case, ddate2, medauo_evidence) %>% 
+  mutate(year = lubridate::year(ddate2)) %>% 
+  ggplot(., aes(x = reorder(case, ddate2), y = medauo_evidence)) +
+  geom_bar(stat = "identity") +
+  labs(
+    x = "Case",
+    y = "Frequency of frame words/phrases in amici (divided by total word ct)",
+    title = "Word/Phrase Count for AA Med Expert Evidence Frame"
+  ) + 
+  facet_grid(~ year, switch = "x", scales = "free_x", space = "free_x") +
+  theme_bw() +
+  theme(
+    # grid lines + background
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(fill = "white", size = 0.1),
+    panel.border = element_blank(),
+    plot.background = element_rect(color = "#eaeaea", size = 0.4),
+    axis.line = element_line(color = "#eaeaea", size = 0.4),
+    # facet format
+    panel.spacing = unit(0, "pt"), 
+    strip.background = element_blank(),
+    strip.placement = "outside",
+    strip.text = element_text(color = "gray10", size = 7.4, angle = 45),
+    # axis title
+    axis.title = element_text(color = "#666666", size = 8),
+    # axis text
+    axis.text.x = element_text(color = "gray45", size = 7.4, angle = 90, vjust = 0.5, hjust=1),
+    axis.text.y = element_text(color = "gray45", size = 7),
+    # axis ticks
+    axis.ticks.x = element_line(colour = "#bdbdbd", size = 0.4),
+    axis.ticks.y = element_blank(),
+    # title
+    plot.title = element_text(color = "#666666", size = 9.1, hjust = 0.5)
+  )
+```
+
+\newpage
+
+## Relauo & Fetus
+
+```{r}
+df %>% 
+  select(case, ddate2, relauo_fetus) %>% 
+  mutate(year = lubridate::year(ddate2)) %>% 
+  ggplot(., aes(x = reorder(case, ddate2), y = relauo_fetus)) +
+  geom_bar(stat = "identity") +
+  labs(
+    x = "Case",
+    y = "Frequency of frame words/phrases in amici (divided by total word ct)",
+    title = "Word/Phrase Count for AA Rel Fetus Frame"
+  ) + 
+  facet_grid(~ year, switch = "x", scales = "free_x", space = "free_x") +
+  theme_bw() +
+  theme(
+    # grid lines + background
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(fill = "white", size = 0.1),
+    panel.border = element_blank(),
+    plot.background = element_rect(color = "#eaeaea", size = 0.4),
+    axis.line = element_line(color = "#eaeaea", size = 0.4),
+    # facet format
+    panel.spacing = unit(0, "pt"), 
+    strip.background = element_blank(),
+    strip.placement = "outside",
+    strip.text = element_text(color = "gray10", size = 7.4, angle = 45),
+    # axis title
+    axis.title = element_text(color = "#666666", size = 8),
+    # axis text
+    axis.text.x = element_text(color = "gray45", size = 7.4, angle = 90, vjust = 0.5, hjust=1),
+    axis.text.y = element_text(color = "gray45", size = 7),
+    # axis ticks
+    axis.ticks.x = element_line(colour = "#bdbdbd", size = 0.4),
+    axis.ticks.y = element_blank(),
+    # title
+    plot.title = element_text(color = "#666666", size = 9.1, hjust = 0.5)
+  )
+```
+
+\newpage
+
+## Medauo & Morality 
+
+```{r}
+df %>% 
+  select(case, ddate2, medauo_morality_religion) %>% 
+  mutate(year = lubridate::year(ddate2)) %>% 
+  ggplot(., aes(x = reorder(case, ddate2), y = medauo_morality_religion)) +
+  geom_bar(stat = "identity") +
+  labs(
+    x = "Case",
+    y = "Frequency of frame words/phrases in amici (divided by total word ct)",
+    title = "Word/Phrase Count for AA Med Morality & Religion Frame"
+  ) + 
+  facet_grid(~ year, switch = "x", scales = "free_x", space = "free_x") +
+  theme_bw() +
+  theme(
+    # grid lines + background
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(fill = "white", size = 0.1),
+    panel.border = element_blank(),
+    plot.background = element_rect(color = "#eaeaea", size = 0.4),
+    axis.line = element_line(color = "#eaeaea", size = 0.4),
+    # facet format
+    panel.spacing = unit(0, "pt"), 
+    strip.background = element_blank(),
+    strip.placement = "outside",
+    strip.text = element_text(color = "gray10", size = 7.4, angle = 45),
+    # axis title
+    axis.title = element_text(color = "#666666", size = 8),
+    # axis text
+    axis.text.x = element_text(color = "gray45", size = 7.4, angle = 90, vjust = 0.5, hjust=1),
+    axis.text.y = element_text(color = "gray45", size = 7),
+    # axis ticks
+    axis.ticks.x = element_line(colour = "#bdbdbd", size = 0.4),
+    axis.ticks.y = element_blank(),
+    # title
+    plot.title = element_text(color = "#666666", size = 9.1, hjust = 0.5)
+  )
+```
+
+
+
 
