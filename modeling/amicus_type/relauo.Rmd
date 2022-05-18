@@ -105,7 +105,7 @@ The following frames are significant:
 * 0:
 * 0.01:
 * 0.05: abortion regret (+)
-* 0.10: evidence (+)
+* 0.10: evidence (+), women's futures (+)
 * 0.20: bad law (+), women's health (+)
 
 

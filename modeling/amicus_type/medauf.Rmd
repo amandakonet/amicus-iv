@@ -104,7 +104,7 @@ The following frames are significant:
 
 * 0:
 * 0.01:
-* 0.05: women's future life (-)
+* 0.05: 
 * 0.10: standing (+)
 * 0.20: bad law (+), fetus (+)
 

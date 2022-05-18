@@ -105,7 +105,7 @@ The following frames are significant:
 * 0:
 * 0.01:
 * 0.05: morality & religion (-)
-* 0.10: abortion regret (+)
+* 0.10: abortion regret (+), women's future life (+)
 * 0.20: undue burden (-), women's health (+)
 
 
