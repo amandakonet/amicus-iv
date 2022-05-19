@@ -97,8 +97,11 @@ final <- amicus %>%
 Check 
 
 ```{r}
-final %>% head()
+final %>% filter(id %in% c("861816866207", "861823038832", "861823020832",
+                            "861823019632", "861819861103", "861823931085")) %>% 
+  select(-text)
 ```
+
 Ensure no NAs
 
 ```{r}
