@@ -2,7 +2,9 @@
 title: "Paper Visualizations"
 author: "Amanda Konet"
 date: "`r date()`"
-output: pdf_document
+output:
+  html_document:
+    df_print: paged
 ---
 
 ```{r setup, include=FALSE}
@@ -100,9 +102,11 @@ author_table <- author_types %>% pivot_wider(names_from = position, values_from 
 author_table[1,3] <- 0
 author_table[3,2] <- 0
 
-stargazer(author_table, summary=FALSE, rownames=FALSE, title = "Table 1.  Total Number of Amicus Briefs by Amicus Type in the Supreme Court Abortion Cases", notes = "a. Legal cases can have more than one amicus type filed in a case (e.g., differing groups of feminist organizations can file more than one brief in a case).  Also, the same organizations file briefs in multiple cases.", header=FALSE, notes.align = 'c')
-```
+total <- c("Total", sum(author_table$`Reproductive Rights`), sum(author_table$`Antiabortion`))
+author_table <- rbind(author_table, total)
 
+stargazer(author_table, summary=FALSE, rownames=FALSE, title = "Table 1.  Total Number of Amicus Briefs by Amicus Type in the Supreme Court Abortion Cases", notes = "a. Legal cases can have more than one amicus type filed in a case (e.g., differing groups of feminist organizations can file more than one brief in a case).  Also, the same organizations file briefs in multiple cases.", header=FALSE, type = 'html', notes.align = 'l')
+```
 
 
 
