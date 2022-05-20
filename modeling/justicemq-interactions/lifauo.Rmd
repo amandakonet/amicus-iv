@@ -963,3 +963,8 @@ ggplot(ef_df, aes(x = justicemq, y= fit, group = lifauo_womens_health))+
 ```{r}
 summary(mod26)
 ```
+
+```{r, eval=F}
+#save models for paper tables
+saveRDS(mod23, "models/lif_undue_interactions.rds")
+```

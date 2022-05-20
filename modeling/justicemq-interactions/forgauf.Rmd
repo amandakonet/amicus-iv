@@ -963,3 +963,11 @@ ggplot(ef_df, aes(x = justicemq, y= fit, group = forgauf_womens_health))+
 ```{r}
 summary(mod26)
 ```
+
+```{r, eval=F}
+#save models for paper tables
+saveRDS(mod18, "models/forg_privacy_interactions.rds")
+
+saveRDS(mod23, "models/forg_undue_interactions.rds")
+```
+

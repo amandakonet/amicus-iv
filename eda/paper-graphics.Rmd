@@ -81,12 +81,14 @@ df %>% filter(lubridate::year(ddate2) == 1989) %>% distinct(case, ddate2, cfemam
 # Table 1
 
 ```{r, results='asis'}
+#transform dataframe
 author_types <- amicus %>% select(chcauf, lifauo, medauf, medauo, legauf, legauo, relauf, relauo) %>%
   mutate(across(where(is.character), as.numeric)) %>%
   summarise(across(where(is.numeric), ~ sum(.x, na.rm = TRUE))) %>%
   pivot_longer(.,cols = c(chcauf, lifauo, medauf, medauo, legauf, legauo, relauf, relauo), names_to = "var", values_to = "ct") %>%
   arrange(var)
 
+#clean up names
 author_types <- author_types %>% mutate(author_type = substr(var, 1, 3), position = substr(var, 4, 6)) %>% select(-var)
 
 author_types$position <- ifelse(author_types$position == "auf", 'Reproductive Rights', 'Antiabortion')
@@ -98,16 +100,28 @@ author_types <- author_types %>% mutate(`Amicus Author Type` = case_when(
   author_type == 'rel' ~ 'Religious Groups',
 )) %>% select(-author_type)
 
+#clean values
 author_table <- author_types %>% pivot_wider(names_from = position, values_from = ct)
 author_table[1,3] <- 0
 author_table[3,2] <- 0
 
+#add totals
 total <- c("Total", sum(author_table$`Reproductive Rights`), sum(author_table$`Antiabortion`))
 author_table <- rbind(author_table, total)
 
+#create table
 stargazer(author_table, summary=FALSE, rownames=FALSE, title = "Table 1.  Total Number of Amicus Briefs by Amicus Type in the Supreme Court Abortion Cases", notes = "a. Legal cases can have more than one amicus type filed in a case (e.g., differing groups of feminist organizations can file more than one brief in a case).  Also, the same organizations file briefs in multiple cases.", header=FALSE, type = 'html', notes.align = 'l')
 ```
 
+# Table 2
 
+```{r, results='asis'}
+#read in models
+forg_privacy_interactions <- readRDS("../modeling/justicemq-interactions/models/forg_privacy_interactions.rds")
+forg_undue_interactions <- readRDS("../modeling/justicemq-interactions/models/forg_undue_interactions.rds")
+lif_undue_interactions <- readRDS("../modeling/justicemq-interactions/models/lif_undue_interactions.rds")
+
+stargazer(forg_privacy_interactions, forg_undue_interactions, lif_undue_interactions, title="Results", type='html',align=TRUE)
+```
 
 
