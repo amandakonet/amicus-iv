@@ -128,8 +128,9 @@ relauo_undue_interactions <- readRDS("../modeling/justicemq-interactions/models/
 
 stargazer(forg_privacy, forg_privacy_interactions, forg_undue, forg_undue_interactions, lif_undue, lif_undue_interactions, relauo_undue, relauo_undue_interactions,
           title="Results", type='html',align=TRUE,
-          column.labels = c("Forg Privacy", "Forg Undue", 
-                            "Life Undue", "Relauo Undue"))
+          column.labels = c("Model 1", "Model 2", 
+                            "Model 3", "Model 4", "Model 5", "Model 6", 
+                            "Model 7", "Model 8"))
 # , covariate.labels = c("Justice Ideology", "Justice Gender", "Lower Court Decision", "Solicitor General Amicus Brief", "pfemam", "forgauf_privacy", "justicemq:forgauf_privacy", "forgauf_undue_burden", "justicemq:forgauf_undue_burden", "poppam", "lifauo_undue_burden", "justicemq:lifauo_undue_burden"))
 ```
 
@@ -150,8 +151,9 @@ medauo_evidence_interactions <- readRDS("../modeling/justicemq-interactions/mode
 
 stargazer(forg_womenhealth, forg_womenhealth_interactions, medauf_womenhealth, medauf_womenhealth_interactions, forg_womenfuture, relauo_abortionregret, forg_evidence, forg_evidence_interactions, medauo_evidence, medauo_evidence_interactions
           ,title="Results", type='html',align=TRUE,
-          column.labels = c("Forg Privacy", "Forg Undue", 
-                            "Life Undue", "Relauo Undue"))
+          column.labels = c("Model 1", "Model 2", 
+                            "Model 3", "Model 4", "Model 5", "Model 6", 
+                            "Model 7", "Model 8", "Model 9", "Model 10"))
 ```
 
 # Table 4
@@ -166,6 +168,6 @@ medauo_morality <- readRDS("../modeling/amicus_type/models/medauo_morality.rds")
 
 stargazer(forg_fetus, forg_morality, relauo_fetus, relauo_fetus_interactions, medauo_morality
           ,title="Results", type='html',align=TRUE,
-          column.labels = c("Forg Privacy", "Forg Undue", 
-                            "Life Undue", "Relauo Undue"))
+          column.labels = c("Model 1", "Model 2", 
+                            "Model 3", "Model 4", "Model 5"))
 ```
