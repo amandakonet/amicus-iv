@@ -3,8 +3,7 @@ title: "Paper Visualizations"
 author: "Amanda Konet"
 date: "`r date()`"
 output:
-  html_document:
-    df_print: paged
+  html_document
 ---
 
 ```{r setup, include=FALSE}
@@ -126,12 +125,28 @@ lif_undue_interactions <- readRDS("../modeling/justicemq-interactions/models/lif
 relauo_undue <- readRDS("../modeling/amicus_type/models/relauo_undue.rds")
 relauo_undue_interactions <- readRDS("../modeling/justicemq-interactions/models/relauo_undue_interactions.rds")
 
-stargazer(forg_privacy, forg_privacy_interactions, forg_undue, forg_undue_interactions, lif_undue, lif_undue_interactions, relauo_undue, relauo_undue_interactions,
-          title="Results", type='html',align=TRUE,
+stargazer(forg_privacy, forg_privacy_interactions,
+          forg_undue, forg_undue_interactions,
+          lif_undue, lif_undue_interactions,
+          relauo_undue, relauo_undue_interactions,
+          type='html',align=TRUE,
+          model.numbers = F, ci=T,
+          dep.var.labels="Justice Vote (1 = Fem)",
           column.labels = c("Model 1", "Model 2", 
                             "Model 3", "Model 4", "Model 5", "Model 6", 
-                            "Model 7", "Model 8"))
-# , covariate.labels = c("Justice Ideology", "Justice Gender", "Lower Court Decision", "Solicitor General Amicus Brief", "pfemam", "forgauf_privacy", "justicemq:forgauf_privacy", "forgauf_undue_burden", "justicemq:forgauf_undue_burden", "poppam", "lifauo_undue_burden", "justicemq:lifauo_undue_burden"))
+                            "Model 7", "Model 8"),
+          order=c("forgauf_privacy", "justicemq:forgauf_privacy",
+                  "forgauf_undue_burden", "justicemq:forgauf_undue_burden",
+                  "lifauo_undue_burden", "justicemq:lifauo_undue_burden",
+                  "relauo_undue_burden", "justicemq:relauo_undue_burden",
+                  "justicemq","justicefem1","pfemam","poppam","sgfem3","lcdisdirfem1"),
+          covariate.labels = c("feminist privacy","justice ideology X feminist privacy",
+                               "feminist undue burden", "feminist undue burden x justice ideology",
+                               "AA org undue burden", "AA org undue burden x justice ideology",
+                               "religious (AA) undue burden", "religious (AA) undue burden X justice ideology",
+                               "justice ideology", "justice gender", "proportion RR", "proportion AA",
+                               "SG amicus brief", "lower court decision"),
+          out="graphics/table2.htm")
 ```
 
 # Table 3
@@ -166,8 +181,10 @@ relauo_fetus <- readRDS("../modeling/amicus_type/models/relauo_fetus.rds")
 relauo_fetus_interactions <- readRDS("../modeling/justicemq-interactions/models/relauo_fetus_interactions.rds")
 medauo_morality <- readRDS("../modeling/amicus_type/models/medauo_morality.rds")
 
-stargazer(forg_fetus, forg_morality, relauo_fetus, relauo_fetus_interactions, medauo_morality
-          ,title="Results", type='html',align=TRUE,
+stargazer(forg_fetus, forg_morality, relauo_fetus, relauo_fetus_interactions, medauo_morality,
+          title="Results", type='html',align=TRUE,
           column.labels = c("Model 1", "Model 2", 
                             "Model 3", "Model 4", "Model 5"))
 ```
+
+
