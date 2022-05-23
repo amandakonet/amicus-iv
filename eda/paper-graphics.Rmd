@@ -117,11 +117,55 @@ stargazer(author_table, summary=FALSE, rownames=FALSE, title = "Table 1.  Total 
 
 ```{r, results='asis'}
 #read in models
+forg_privacy <- readRDS("../modeling/amicus_type/models/forg_privacy.rds")
 forg_privacy_interactions <- readRDS("../modeling/justicemq-interactions/models/forg_privacy_interactions.rds")
+forg_undue <- readRDS("../modeling/amicus_type/models/forg_undue.rds")
 forg_undue_interactions <- readRDS("../modeling/justicemq-interactions/models/forg_undue_interactions.rds")
+lif_undue <- readRDS("../modeling/amicus_type/models/lif_undue.rds")
 lif_undue_interactions <- readRDS("../modeling/justicemq-interactions/models/lif_undue_interactions.rds")
+relauo_undue <- readRDS("../modeling/amicus_type/models/relauo_undue.rds")
+relauo_undue_interactions <- readRDS("../modeling/justicemq-interactions/models/relauo_undue_interactions.rds")
 
-stargazer(forg_privacy_interactions, forg_undue_interactions, lif_undue_interactions, title="Results", type='html',align=TRUE)
+stargazer(forg_privacy, forg_privacy_interactions, forg_undue, forg_undue_interactions, lif_undue, lif_undue_interactions, relauo_undue, relauo_undue_interactions,
+          title="Results", type='html',align=TRUE,
+          column.labels = c("Forg Privacy", "Forg Undue", 
+                            "Life Undue", "Relauo Undue"))
+# , covariate.labels = c("Justice Ideology", "Justice Gender", "Lower Court Decision", "Solicitor General Amicus Brief", "pfemam", "forgauf_privacy", "justicemq:forgauf_privacy", "forgauf_undue_burden", "justicemq:forgauf_undue_burden", "poppam", "lifauo_undue_burden", "justicemq:lifauo_undue_burden"))
 ```
 
+# Table 3
 
+```{r, results='asis'}
+#read in models
+forg_womenhealth <- readRDS("../modeling/amicus_type/models/forg_womenhealth.rds")
+forg_womenhealth_interactions <- readRDS("../modeling/justicemq-interactions/models/forg_womenshealth_interactions.rds")
+medauf_womenhealth <- readRDS("../modeling/amicus_type/models/medauf_womenhealth.rds")
+medauf_womenhealth_interactions <- readRDS("../modeling/justicemq-interactions/models/medauf_womenshealth_interactions.rds")
+forg_womenfuture <- readRDS("../modeling/amicus_type/models/forg_womenfuture.rds")
+relauo_abortionregret <- readRDS("../modeling/amicus_type/models/relauo_abortionregret.rds")
+forg_evidence <- readRDS("../modeling/amicus_type/models/forg_evidence.rds")
+forg_evidence_interactions <- readRDS("../modeling/justicemq-interactions/models/forg_evidence_interactions.rds")
+medauo_evidence <- readRDS("../modeling/amicus_type/models/medauo_evidence.rds")
+medauo_evidence_interactions <- readRDS("../modeling/justicemq-interactions/models/medauo_evidence_interactions.rds")
+
+stargazer(forg_womenhealth, forg_womenhealth_interactions, medauf_womenhealth, medauf_womenhealth_interactions, forg_womenfuture, relauo_abortionregret, forg_evidence, forg_evidence_interactions, medauo_evidence, medauo_evidence_interactions
+          ,title="Results", type='html',align=TRUE,
+          column.labels = c("Forg Privacy", "Forg Undue", 
+                            "Life Undue", "Relauo Undue"))
+```
+
+# Table 4
+
+```{r, results='asis'}
+#read in models
+forg_fetus <- readRDS("../modeling/amicus_type/models/forg_fetus.rds")
+forg_morality <- readRDS("../modeling/amicus_type/models/forg_morality.rds")
+relauo_fetus <- readRDS("../modeling/amicus_type/models/relauo_fetus.rds")
+relauo_fetus_interactions <- readRDS("../modeling/justicemq-interactions/models/relauo_fetus_interactions.rds")
+medauo_morality <- readRDS("../modeling/amicus_type/models/medauo_morality.rds")
+
+stargazer(forg_fetus, forg_morality, relauo_fetus, relauo_fetus_interactions, medauo_morality
+          ,title="Results", type='html',align=TRUE,
+          column.labels = c("Forg Privacy", "Forg Undue", 
+                            "Life Undue", "Relauo Undue"))
+```

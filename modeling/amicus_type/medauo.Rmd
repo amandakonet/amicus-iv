@@ -551,3 +551,10 @@ tidy(mod27,conf.int=F,exponentiate=T,effects="fixed") %>%
 
 summary(mod27)
 ```
+
+```{r, eval=F}
+#save models for paper tables
+saveRDS(mod14, "models/medauo_morality.rds")
+saveRDS(mod9, "models/medauo_evidence.rds")
+
+```

@@ -963,3 +963,9 @@ ggplot(ef_df, aes(x = justicemq, y= fit, group = medauf_womens_health))+
 ```{r}
 summary(mod26)
 ```
+
+```{r, eval=F}
+#save models for paper tables
+saveRDS(mod26, "models/medauf_womenshealth_interactions.rds")
+
+```

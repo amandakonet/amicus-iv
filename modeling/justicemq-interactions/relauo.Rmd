@@ -963,3 +963,9 @@ ggplot(ef_df, aes(x = justicemq, y= fit, group = relauo_womens_health))+
 ```{r}
 summary(mod26)
 ```
+
+```{r, eval=F}
+#save models for paper tables
+saveRDS(mod11, "models/relauo_fetus_interactions.rds")
+saveRDS(mod23, "models/relauo_undue_interactions.rds")
+```

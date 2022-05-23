@@ -966,8 +966,9 @@ summary(mod26)
 
 ```{r, eval=F}
 #save models for paper tables
+saveRDS(mod9, "models/forg_evidence_interactions.rds")
 saveRDS(mod18, "models/forg_privacy_interactions.rds")
-
 saveRDS(mod23, "models/forg_undue_interactions.rds")
+saveRDS(mod26, "models/forg_womenshealth_interactions.rds")
 ```
 
