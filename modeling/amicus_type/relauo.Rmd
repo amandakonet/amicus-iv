@@ -556,6 +556,6 @@ summary(mod27)
 #save models for paper tables
 saveRDS(mod11, "models/relauo_fetus.rds")
 saveRDS(mod23, "models/relauo_undue.rds")
-saveRDS(mod26, "models/relauo_abortionregret.rds")
+saveRDS(mod3, "models/relauo_abortionregret.rds")
 
 ```
