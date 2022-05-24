@@ -272,9 +272,117 @@ case_frames <- sum_amicus %>% left_join(., case_cts, by = c("case", "author_type
 Save
 
 ```{r}
-box_write(case_frames,
-           file_name = "case-level-frame-measures.csv",
-           dir_id = 161199725595)
+#box_write(case_frames,
+#           file_name = "case-level-frame-measures.csv",
+#           dir_id = 161199725595)
+```
+
+# Additional Info
+
+```{r, eval=F}
+frame = "women's_health"
+
+phrases <- frame_terms %>% 
+  filter(frame_code == frame) %>%
+  select(word_clean) %>% 
+  .[[1]]
+
+# search tokens for the desired phrases, then create DFM
+frame_freqs <- toks %>% 
+  tokens_compound(pattern = phrase(phrases), concatenator = " ", 
+                case_insensitive = FALSE, valuetype = "fixed") %>%
+  tokens_select(phrases, case_insensitive = FALSE, valuetype = "fixed") %>%
+  dfm()
+  
+# convert to df w/one row per brief+counts of phrases, joined w/brief info
+frame_word_freqs <- frame_freqs %>% 
+  convert(to = "data.frame") %>%
+  left_join(amicus_info, by = "doc_id") %>% 
+  select(case, id, brief, brief_party, word_ct, everything())
+
+# add amicus author
+amicus_type <- amicus %>% select(id, forgauf, legauf, legauo, lifauo,
+                                 medauf, medauo, relauf, relauo)
+frame_word_freqs <- frame_word_freqs %>% 
+  left_join(., amicus_type, on = "id") %>% 
+  select(-c(doc_id, legauf, legauo, lifauo, medauo, relauf, relauo)) %>% 
+  select(case, brief, id, brief_party, forgauf, medauf, word_ct, sort(colnames(.)))
+
+final <- frame_word_freqs %>% filter(forgauf == 1 | medauf == 1) %>% 
+  mutate(case = str_replace(case, 'v\\.', 'v'),
+         case = str_replace_all(case, "(,|’|'|\\)|\\()", ""))
+
+#xlsx::write.xlsx(final, file = "womens_health_cts.xlsx")
+decisions <- readxl::read_xlsx("../eda/ab_cases.xlsx", sheet = "dat")
+decisions <- decisions %>% 
+  mutate(case = str_replace(case, 'v\\.', 'v'),
+         case = str_replace_all(case, "(,|’|'|\\)|\\()", ""),
+         case = case_when(
+           case == "Anders Solicitor of Richland County v Floyd" ~ "Anders v Floyd",
+           case == "Ayotte AG of NH v Planned Parenhood of Northern New England" ~ "Ayotte v PP",
+           case == "Beal Sec Dept of Public Wel of PA v Doe" ~ "Beal v Doe",
+           case == "Bellotti Attorn Gen of MA v Baird 1979" ~ "Bellotti v Baird 1979",
+           case == "City of Akron v Akron Center for Rep Health" ~ "City of Akron v Akron Center",
+           case == "Colautti Sec of Wel of PA v Franklin" ~ "Colautti v Franklin",
+           case == "Doe et al v Bolton Attorn Gen of GA et al" ~ "Doe v Bolton",
+           case == "Gonzales AG v Leroy Carhart" ~ "Gonzales v Carhart",
+           case == "Gonzales v Planned Parenthood Federation of America" ~ "Gonzales v PP",
+           case == "Harris Sec of HHS v McRae" ~ "Harris v McRae",
+           case == "Hartigan Attor Gen of IL v David Zbaraz and Allan G Charles" ~ "Hartigan v Zbaraz",
+           case == "Hill et al v Colorado" ~ "Hill v Colorado",
+           case == "H L v Matheson Gov of UT" ~ "H.L. v Matheson",
+           case == "Judy Madsen v Womens Health Center" ~ "Madsen v Womens Health Center",
+           case == "Maher Comm of Soc Serv of CT v Roe" ~ "Maher v Roe",
+           case == "NOW v Joseph Scheidler 1994" ~ "NOW v Scheidler 1994",
+           case == "Ohio v Akron Center for Reproductive Health" ~ "Ohio v Akron Center",
+           case == "Planned Parenthood Assoc of Kansas City MO v Ashcroft Attorn Gen of MO" ~
+             "PP v Ashcroft",
+           case == "Planned Parenhood of SE Penn v Casey" ~ "PP v Casey",
+           case == "Planned Parenthood of Central MO v Danforth Attorn Gen of MO" ~ "PP v Danforth",
+           case == "Roe et al v Wade District Attorn of Dallas County" ~ "Roe v Wade",
+           case == "Rust v Sullivan Sec of HHS" ~ "Rust v Sullivan",
+           case == "Joseph Scheidler v NOW 2003" ~ "Scheidler v NOW 2003",
+           case == "Scheidler v NOW 2006" ~ "Scheidler v Now 2006",
+           case == "Schenck et al v Pro-Choice Network of Western NY" ~
+             "Schenck v Pro-Choice Network",
+           case == "Stenberg AG of Neb v Leroy Carhart" ~ "Stenberg v Carhart",
+           case == "Thornburgh Gov of PA v American College of Obstetricians and Gynecologists" ~
+             "Thornburgh v American College of OBGYNs",
+           case == "Webster Attor Gen of MO v Reproductive Health Services" ~ "Webster v Reproductive Health Services", 
+           case == "Whole Womans Health v Hellerstedt" ~ "WWH v Hellerstedt",
+           T ~ case
+         )) %>%
+  arrange(case)
+
+final %>% 
+  janitor::clean_names() %>% 
+  left_join(., decisions, by = "case") %>% 
+  mutate(death = mortality+morbidity) %>% 
+  group_by(fem_win, forgauf, medauf) %>% 
+  summarize(n = sum(death))
+
+final %>% 
+  janitor::clean_names() %>% 
+  left_join(., decisions, by = "case") %>%
+  mutate(death = mortality+morbidity) %>% 
+  filter(forgauf == 1, fem_win == 0) %>% 
+  group_by(case, ddate2) %>% 
+  summarize(n = sum(death)) %>% 
+  arrange(ddate2)
+
+final %>% 
+  janitor::clean_names() %>% 
+  left_join(., decisions, by = "case") %>% 
+  mutate(illegal_abortion = illegal_abortion+illegal_abortions,
+         safe_abortion = safe_abortion + safe_legal_abortion,
+         self_abortion = self_abortion+self_abortions+
+           self_induced_abortion+self_induced_abortions) %>% 
+  select(-id, -brief_party, -word_ct, -sentences, -tokens, -types) %>% 
+  group_by(fem_win, forgauf, medauf) %>%
+  #summarize(across(where(is.numeric), ~sum(.x)))
+  summarize(illegal_abortion = sum(illegal_abortion),
+            safe_abortion = sum(safe_abortion),
+            self_abortion = sum(self_abortion))
 ```
 
 
