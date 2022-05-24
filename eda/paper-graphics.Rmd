@@ -140,9 +140,9 @@ stargazer(forg_privacy, forg_privacy_interactions,
                   "lifauo_undue_burden", "justicemq:lifauo_undue_burden",
                   "relauo_undue_burden", "justicemq:relauo_undue_burden",
                   "justicemq","justicefem1","pfemam","poppam","sgfem3","lcdisdirfem1"),
-          covariate.labels = c("feminist privacy","justice ideology X feminist privacy",
-                               "feminist undue burden", "feminist undue burden x justice ideology",
-                               "AA org undue burden", "AA org undue burden x justice ideology",
+          covariate.labels = c("feminist org privacy","feminist org privacy X justice ideology",
+                               "feminist org undue burden", "feminist org undue burden x justice ideology",
+                               "prolife org undue burden", "prolife org undue burden x justice ideology",
                                "religious (AA) undue burden", "religious (AA) undue burden X justice ideology",
                                "justice ideology", "justice gender", "proportion RR", "proportion AA",
                                "SG amicus brief", "lower court decision"),
@@ -164,11 +164,34 @@ forg_evidence_interactions <- readRDS("../modeling/justicemq-interactions/models
 medauo_evidence <- readRDS("../modeling/amicus_type/models/medauo_evidence.rds")
 medauo_evidence_interactions <- readRDS("../modeling/justicemq-interactions/models/medauo_evidence_interactions.rds")
 
-stargazer(forg_womenhealth, forg_womenhealth_interactions, medauf_womenhealth, medauf_womenhealth_interactions, forg_womenfuture, relauo_abortionregret, forg_evidence, forg_evidence_interactions, medauo_evidence, medauo_evidence_interactions
+stargazer(forg_womenhealth, forg_womenhealth_interactions, 
+          medauf_womenhealth, medauf_womenhealth_interactions,
+          #forg_womenfuture,
+          relauo_abortionregret,
+          forg_evidence, forg_evidence_interactions,
+          medauo_evidence, medauo_evidence_interactions
           ,title="Results", type='html',align=TRUE,
+          model.numbers = F, ci=T,
+          dep.var.labels="Justice Vote (1 = Fem)",
           column.labels = c("Model 1", "Model 2", 
                             "Model 3", "Model 4", "Model 5", "Model 6", 
-                            "Model 7", "Model 8", "Model 9", "Model 10"))
+                            "Model 7", "Model 8", "Model 9", "Model 10"),
+          order=c("forgauf_womens_health", "justicemq:forgauf_womens_health",
+                  "medauf_womens_health", "justicemq:medauf_womens_health",
+                  #"forgauf_womens_future_life",
+                  "relauo_abortion_regret",
+                  "forgauf_evidence", "justicemq:forgauf_evidence",
+                  "medauo_evidence", "justicemq:medauo_evidence",
+                  "justicemq","justicefem1","pfemam","poppam","sgfem3","lcdisdirfem1"),
+          covariate.labels = c("feminist org women's health", "feminist org women's health X justice ideology",
+                               "medical (RR) women's health", "medical (RR) women's health x justice ideology",
+                               #"feminist org women's futures",
+                               "religious (AA) abortion regret", 
+                               "feminist org expert evidence", "feminist org expert evidence X justice ideology",
+                               "medical (RR) expert evidence", "medical (RR) expert evidence X justice ideology",
+                               "justice ideology", "justice gender", "proportion RR", "proportion AA",
+                               "SG amicus brief", "lower court decision"),
+          out="graphics/table3.htm")
 ```
 
 # Table 4
@@ -183,8 +206,21 @@ medauo_morality <- readRDS("../modeling/amicus_type/models/medauo_morality.rds")
 
 stargazer(forg_fetus, forg_morality, relauo_fetus, relauo_fetus_interactions, medauo_morality,
           title="Results", type='html',align=TRUE,
-          column.labels = c("Model 1", "Model 2", 
-                            "Model 3", "Model 4", "Model 5"))
+          column.labels = c("Model 1", "Model 2", "Model 3", "Model 4", "Model 5"),
+          model.numbers = F, ci=T,
+          dep.var.labels="Justice Vote (1 = Fem)",
+          order=c("forgauf_fetus",
+                  "forgauf_morality_religion",
+                  "relauo_fetus", "justicemq:relauo_fetus",
+                  "medauo_morality_religion",
+                  "justicemq","justicefem1","pfemam","poppam","sgfem3","lcdisdirfem1"),
+          covariate.labels = c("feminist org fetus",
+                               "feminist org morality and religious",
+                               "religious (AA) fetus", "religious (AA) fetus X justice ideology",
+                               "medical (RR) morality",
+                               "justice ideology", "justice gender", "proportion RR", "proportion AA",
+                               "SG amicus brief", "lower court decision"),
+          out="graphics/table4.htm")
 ```
 
 
