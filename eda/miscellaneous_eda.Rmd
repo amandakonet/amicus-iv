@@ -1,0 +1,30 @@
+---
+title: "Miscellaneous"
+author: "Sarah Torrence"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, warning = F, message = F, error = F)
+library(tidyverse)
+library(ggplot2)
+library(boxr)
+library(stargazer)
+box_auth()
+
+amicus <- box_read("947307207905", read_fun = readr::read_csv)
+```
+
+The average number of authors on the RR and AA amici (separately) for our 40 abortion cases
+
+ (still in progress)
+
+
+The average number of amici per case on the RR and AA sides (RR and AA separately).  
+
+```{r}
+amici_per_case <- amicus %>% group_by(case, brief_party) %>% summarize(count = n())
+amici_per_case %>% group_by(brief_party) %>% summarize(avg = mean(count))
+```
+
