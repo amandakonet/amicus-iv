@@ -25,7 +25,7 @@ df <- box_read(final_cases) %>%
                 ~replace_na(.x, 0))) %>% 
   distinct(case, ddate2,
            forgauf_privacy, forgauf_undue_burden, forgauf_womens_health, forgauf_evidence,
-           medauf_womens_future_life, medauf_womens_health,
+           medauf_womens_future_life, medauf_womens_health, forgauf_womens_future_life,
            lifauo_undue_burden,
            relauo_undue_burden, relauo_abortion_regret, relauo_fetus,
            medauo_final_authority, medauo_evidence, medauo_morality_religion) %>% 
@@ -222,6 +222,50 @@ df %>%
     x = "Case",
     y = "Frequency of frame words/phrases in amici (divided by total word ct)",
     title = "Word/Phrase Count for RR Med Women's Futures Frame"
+  ) + 
+  facet_grid(~ year, switch = "x", scales = "free_x", space = "free_x") +
+  theme_bw() +
+  theme(
+    # grid lines + background
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(fill = "white", size = 0.1),
+    panel.border = element_blank(),
+    plot.background = element_rect(color = "#eaeaea", size = 0.4),
+    axis.line = element_line(color = "#eaeaea", size = 0.4),
+    # facet format
+    panel.spacing = unit(0, "pt"), 
+    strip.background = element_blank(),
+    strip.placement = "outside",
+    strip.text = element_text(color = "gray10", size = 7.4, angle = 45),
+    # axis title
+    axis.title = element_text(color = "#666666", size = 8),
+    # axis text
+    axis.text.x = element_text(color = "gray45", size = 7.4, angle = 90, vjust = 0.5, hjust=1),
+    axis.text.y = element_text(color = "gray45", size = 7),
+    # axis ticks
+    axis.ticks.x = element_line(colour = "#bdbdbd", size = 0.4),
+    axis.ticks.y = element_blank(),
+    # title
+    plot.title = element_text(color = "#666666", size = 9.1, hjust = 0.5)
+  )
+```
+
+\newpage
+
+
+## Forgauf & Women's Futures
+
+```{r}
+df %>% 
+  select(case, ddate2, forgauf_womens_future_life) %>% 
+  mutate(year = lubridate::year(ddate2)) %>% 
+  ggplot(., aes(x = reorder(case, ddate2), y = forgauf_womens_future_life)) +
+  geom_bar(stat = "identity") +
+  labs(
+    x = "Case",
+    y = "Frequency of frame words/phrases in amici (divided by total word ct)",
+    title = "Word/Phrase Count for FORG Women's Futures Frame"
   ) + 
   facet_grid(~ year, switch = "x", scales = "free_x", space = "free_x") +
   theme_bw() +
