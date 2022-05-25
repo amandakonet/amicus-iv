@@ -30,6 +30,7 @@ Abortion frame terms:
 
 ```{r}
 frame_terms <- box_read("947335700912", read_fun = readr::read_csv)
+#frame_terms <- read_csv("~/Box/Amicus IV/data/amicus contents - frames/clean-amicus-iv-frame-dictionary.csv")
 ```
 
 Amicus data:
@@ -38,6 +39,9 @@ Amicus data:
 # abortion cases
 amicus <- box_read("947307207905", read_fun = readr::read_csv) %>% 
   mutate(brief_party = ifelse(id == 861815623586, 1, brief_party))
+
+#amicus <- read_csv("~/Box/Amicus IV/data/processed amicus files/clean-shortened-amicus-text-vars.csv") %>% 
+#  mutate(brief_party = ifelse(id == 861815623586, 1, brief_party))
 ```
 
 
@@ -196,9 +200,9 @@ amicus_frames %>% head(10)
 Save
 
 ```{r}
-box_write(amicus_frames,
-           file_name = "amicus-level-frame-measures.csv",
-           dir_id = 161199725595)
+#box_write(amicus_frames,
+#           file_name = "amicus-level-frame-measures.csv",
+#           dir_id = 161199725595)
 ```
 
 
@@ -312,7 +316,6 @@ final <- frame_word_freqs %>% filter(forgauf == 1 | medauf == 1) %>%
   mutate(case = str_replace(case, 'v\\.', 'v'),
          case = str_replace_all(case, "(,|’|'|\\)|\\()", ""))
 
-#xlsx::write.xlsx(final, file = "womens_health_cts.xlsx")
 decisions <- readxl::read_xlsx("../eda/ab_cases.xlsx", sheet = "dat")
 decisions <- decisions %>% 
   mutate(case = str_replace(case, 'v\\.', 'v'),
@@ -364,11 +367,21 @@ final %>%
 final %>% 
   janitor::clean_names() %>% 
   left_join(., decisions, by = "case") %>%
-  mutate(death = mortality+morbidity) %>% 
+  mutate(death = mortality+morbidity,
+         health_risk = health_risk+health_risks) %>% 
   filter(forgauf == 1, fem_win == 0) %>% 
   group_by(case, ddate2) %>% 
-  summarize(n = sum(death)) %>% 
+  summarize(maternal_health = sum(maternal_health), death = sum(death),
+            health_risk = sum(health_risk)) %>% 
   arrange(ddate2)
+
+final %>% 
+  janitor::clean_names() %>% 
+  left_join(., decisions, by = "case") %>%
+  mutate(death = mortality+morbidity) %>% 
+  filter(medauf == 1, fem_win == 1) %>% 
+  arrange(-death) %>% 
+  select(case, brief, forgauf, medauf, death, maternal_health)
 
 final %>% 
   janitor::clean_names() %>% 
@@ -376,13 +389,15 @@ final %>%
   mutate(illegal_abortion = illegal_abortion+illegal_abortions,
          safe_abortion = safe_abortion + safe_legal_abortion,
          self_abortion = self_abortion+self_abortions+
-           self_induced_abortion+self_induced_abortions) %>% 
+           self_induced_abortion+self_induced_abortions,
+         health_risk = health_risk+health_risks) %>% 
   select(-id, -brief_party, -word_ct, -sentences, -tokens, -types) %>% 
   group_by(fem_win, forgauf, medauf) %>%
   #summarize(across(where(is.numeric), ~sum(.x)))
   summarize(illegal_abortion = sum(illegal_abortion),
             safe_abortion = sum(safe_abortion),
-            self_abortion = sum(self_abortion))
+            self_abortion = sum(self_abortion),
+            health_risk = sum(health_risk))
 ```
 
 
