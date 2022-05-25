@@ -14,11 +14,37 @@ library(stargazer)
 box_auth()
 
 amicus <- box_read("947307207905", read_fun = readr::read_csv)
+
+author_info <- box_read("936715223606")
+
+walkover <- box_read("941154488137", read_fun = readr::read_csv)
+
+regression_data <- box_read("949901868853", read_fun = readr::read_csv)
 ```
 
 The average number of authors on the RR and AA amici (separately) for our 40 abortion cases
 
- (still in progress)
+```{r}
+auth <- author_info  %>% filter(`Row Type` == "Amicus Brief") %>% select(Case, `Amicus \r\nBrief ID`, camau)
+
+walkover$case_code <- as.character(walkover$case_code)
+walkover$brief_code <- as.character(walkover$brief_code)
+auth$brief_code <- as.character(auth$`Amicus \r\nBrief ID`)
+
+auth <- left_join(auth, walkover, by = c("Case" = "case_code","brief_code"))
+
+author_parties <- left_join(auth, amicus, by = c("new_id" = "id")) %>% select(Case, brief_code, camau, brief_party)
+```
+
+```{r}
+author_per_case <- author_parties %>% group_by(Case, brief_party) %>% summarize(total_authors = sum(camau))
+author_per_case %>% group_by(brief_party) %>% summarize(avg = mean(total_authors))
+```
+
+```{r}
+author_per_amicus <- author_parties %>% group_by(Case, brief_code, brief_party) %>% summarize(total_authors = sum(camau))
+author_per_amicus %>% group_by(brief_party) %>% summarize(avg = mean(total_authors))
+```
 
 
 The average number of amici per case on the RR and AA sides (RR and AA separately).  
@@ -27,4 +53,102 @@ The average number of amici per case on the RR and AA sides (RR and AA separatel
 amici_per_case <- amicus %>% group_by(case, brief_party) %>% summarize(count = n())
 amici_per_case %>% group_by(brief_party) %>% summarize(avg = mean(count))
 ```
+
+For writing, I’d like to know who are the most liberal and most conservative justices in our data, using the MQ score? 
+
+```{r}
+justices_data <- box_read("949901868853", read_fun = readr::read_csv)
+justices <- box_read_excel("934508714164", sheet = "Justices")
+
+j <- justices_data %>% filter(case != "Gonzales v PP" & !is.na(justicevot))
+
+average_mq <- j %>% select(justiceid, justicemq) %>% group_by(justiceid) %>% summarise(avg_mq = mean(justicemq)) %>% arrange(avg_mq)
+
+mq <- rbind(average_mq %>% tail(3), average_mq %>% slice(1:3))
+
+left_join(mq, justices, by = c("justiceid" = "ID"))
+```
+For writing, I’d like to know if the term “medical ethics” shows up in the medauo amici prior to the Rust v Sullivan (1991) Assoc of Amer Physicians and Surgeons brief.  If so, where?  List of amici and cases? 
+Note for Sarah: use the clean amici text file (“947307207905”); this file has author type variables as well 
+
+```{r}
+# read in file with decision dates
+decisions <- readxl::read_xlsx("../eda/ab_cases.xlsx", sheet = "dat")
+# clean up mismatched case names
+decisions <- decisions %>% 
+  mutate(case = str_replace(case, 'v\\.', 'v'),
+         case = str_replace_all(case, "(,|'|'|\\)|\\()", ""),
+         case = case_when(
+           case == "Anders Solicitor of Richland County v Floyd" ~ "Anders v Floyd",
+           case == "Ayotte AG of NH v Planned Parenhood of Northern New England" ~ "Ayotte v. PP",
+           case == "Beal Sec Dept of Public Wel of PA v Doe" ~ "Beal v Doe",
+           case == "Bellotti Attorn Gen of MA v Baird 1979" ~ "Bellotti v Baird (1979)",
+           case == "City of Akron v Akron Center for Rep Health" ~ "City of Akron v Akron Center",
+           case == "Colautti Sec of Wel of PA v Franklin" ~ "Colautti v Franklin",
+           case == "Doe et al v Bolton Attorn Gen of GA et al" ~ "Doe v. Bolton",
+           case == "Gonzales AG v Leroy Carhart" ~ "Gonzales v Carhart",
+           case == "Gonzales v Planned Parenthood Federation of America" ~ "Gonzales v PP",
+           case == "Harris Sec of HHS v McRae" ~ "Harris v. McRae",
+           case == "Hartigan Attor Gen of IL v David Zbaraz and Allan G Charles" ~ "Hartigan v. Zbaraz",
+           case == "Hill et al v Colorado" ~ "Hill v. Colorado",
+           case == "H L v Matheson Gov of UT" ~ "H.L. v. Matheson",
+           case == "Judy Madsen v Womens Health Center" ~ "Madsen v Women's Health Center",
+           case == "Maher Comm of Soc Serv of CT v Roe" ~ "Maher v. Roe",
+           case == "NOW v Joseph Scheidler 1994" ~ "NOW v Scheidler 1994",
+           case == "Ohio v Akron Center for Reproductive Health" ~ "Ohio v Akron Center",
+           case == "Planned Parenthood Assoc of Kansas City MO v Ashcroft Attorn Gen of MO" ~
+             "PP v Ashcroft",
+           case == "Planned Parenhood of SE Penn v Casey" ~ "PP v Casey",
+           case == "Planned Parenthood of Central MO v Danforth Attorn Gen of MO" ~ "PP v Danforth",
+           case == "Roe et al v Wade District Attorn of Dallas County" ~ "Roe v Wade",
+           case == "Rust v Sullivan Sec of HHS" ~ "Rust v Sullivan",
+           case == "Scheidler v NOW 2003" ~ "Scheidler v. NOW (2003)",
+           case == "Scheidler v NOW 2006" ~ "Scheidler v. Now (2006)",
+           case == "Schenck et al v Pro-Choice Network of Western NY" ~
+             "Schenck v. Pro-Choice Network",
+           case == "Stenberg AG of Neb v Leroy Carhart" ~ "Stenberg v. Carhart",
+           case == "Thornburgh Gov of PA v American College of Obstetricians and Gynecologists" ~
+             "Thornburgh v. American College of OBGYNs",
+           case == "Webster Attor Gen of MO v Reproductive Health Services" ~ "Webster v Reproductive Health Services", 
+           case == "Whole Womans Health v Hellerstedt" ~ "WWH v Hellerstedt",
+           case == "Bray v Alexandria Womens Health Clinic" ~ "Bray v Alexandria Women’s Health Clinic",
+           case == "Diamond v Charles" ~ "Diamond v. Charles",
+           case == "Frisby v Schultz" ~ "Frisby v. Schultz",
+           case == "Hodgson v Minnesota" ~ "Hodgson v. Minnesota",
+           case == "McCullen v Coakley" ~ "McCullen v. Coakley",
+           case == "Poelker Mayor of St Louis v Doe" ~ "Poelker v Doe",
+           case == "United States v Vuitch" ~ "United States v. Vuitch",
+           case == "Williams v Zbaraz" ~ "Williams v. Zbaraz",
+           T ~ case
+         )) %>%
+  arrange(case)
+```
+
+
+```{r}
+amicus_dates <- left_join(amicus, decisions, by = c("case"))
+
+amicus_dates <- amicus_dates %>% filter(ddate2 < 1991, medauo > 0) %>% select(case, ddate2, id, brief, medauo, text_clean)
+
+amicus_dates$medical_ethics <- str_count(amicus_dates$text_clean, "medical ethics")
+
+a <- amicus_dates %>% filter(medical_ethics > 0)
+a
+```
+ 
+```{r}
+x <- amicus %>% filter(case == "Rust v Sullivan") 
+x$medical_ethics <- str_count(x$text_clean, "medical ethics")
+y <- x %>% filter(medical_ethics > 0)
+y
+```
+
+For writing, I need to know whether I can state that the abortion regret frame is used more so by the antiabortion religious amici than the other types of antiabortion amici. 
+
+```{r}
+data <- regression_data %>% filter(case != "Gonzales v PP" & !is.na(justicevot)) %>% select(legauo_abortion_regret, medauo_abortion_regret, lifauo_abortion_regret, relauo_abortion_regret)
+
+apply(data, 2, sum, na.rm=TRUE)
+```
+
 
