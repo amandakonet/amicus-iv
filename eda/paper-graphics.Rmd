@@ -12,6 +12,7 @@ library(tidyverse)
 library(ggplot2)
 library(boxr)
 library(stargazer)
+library(stringi)
 box_auth()
 
 df <- box_read("949901868853", read_fun = readr::read_csv)
@@ -77,6 +78,7 @@ Check spike
 df %>% filter(lubridate::year(ddate2) == 1989) %>% distinct(case, ddate2, cfemam, coppam)
 ```
 
+
 # Table 1
 
 ```{r, results='asis'}
@@ -87,14 +89,20 @@ author_types <- amicus %>% select(chcauf, lifauo, medauf, medauo, legauf, legauo
   pivot_longer(.,cols = c(chcauf, lifauo, medauf, medauo, legauf, legauo, relauf, relauo), names_to = "var", values_to = "ct") %>%
   arrange(var)
 
+other_types <- amicus %>% select(forgau, antauo, govauf, govauo, sg, racauf, racauo, mpeauf, mpeauo, lg_bauf, forgauf, aclauf, aclauo, sgauf, sgauo) %>%
+  mutate(across(where(is.character), as.numeric)) %>%
+  summarise(across(where(is.numeric), ~ sum(.x, na.rm = TRUE))) %>%
+  pivot_longer(.,cols = c(forgau, antauo, govauf, govauo, sg, racauf, racauo, mpeauf, mpeauo, lg_bauf, forgauf, aclauf, aclauo, sgauf, sgauo), names_to = "var", values_to = "ct") %>%
+  arrange(var)
+
 #clean up names
 author_types <- author_types %>% mutate(author_type = substr(var, 1, 3), position = substr(var, 4, 6)) %>% select(-var)
 
 author_types$position <- ifelse(author_types$position == "auf", 'Reproductive Rights', 'Antiabortion')
-author_types <- author_types %>% mutate(`Amicus Author Type` = case_when(
+author_types <- author_types %>% mutate(`Amicus-Author Type` = case_when(
   author_type == 'chc' ~ 'Feminist Organizations',
-  author_type == 'lif' ~ 'Anti-Feminist Organizations',
-  author_type == 'med' ~ 'Medical Practioners/Orgs/Researchers/Educators',
+  author_type == 'lif' ~ 'Prolife Organizations',
+  author_type == 'med' ~ 'Medical Organizations',
   author_type == 'leg' ~ 'Legal Organizations',
   author_type == 'rel' ~ 'Religious Groups',
 )) %>% select(-author_type)
@@ -104,12 +112,23 @@ author_table <- author_types %>% pivot_wider(names_from = position, values_from 
 author_table[1,3] <- 0
 author_table[3,2] <- 0
 
+#create other category
+other_types <- other_types %>% mutate(position = stri_sub(var,-1))
+other_types$position <- ifelse(other_types$position == 'f', 'Reproductive Rights', 'Antiabortion')
+other_types <- other_types %>% group_by(position) %>% summarize(ct = sum(ct))
+other <- other_types %>% pivot_wider(names_from = position, values_from = ct)
+author_table <- rbind(author_table, c("Other", other$`Reproductive Rights`, other$`Antiabortion`))
+
 #add totals
-total <- c("Total", sum(author_table$`Reproductive Rights`), sum(author_table$`Antiabortion`))
+total <- c("Total", 330, 441)
 author_table <- rbind(author_table, total)
 
+#manually order
+author_table$order <- c(1, 4, 2, 3, 5, 6, 7)
+author_table <- author_table %>% arrange(order) %>% select(-order)
+
 #create table
-stargazer(author_table, summary=FALSE, rownames=FALSE, title = "Table 1.  Total Number of Amicus Briefs by Amicus Type in the Supreme Court Abortion Cases", notes = "a. Legal cases can have more than one amicus type filed in a case (e.g., differing groups of feminist organizations can file more than one brief in a case).  Also, the same organizations file briefs in multiple cases.", header=FALSE, type = 'html', notes.align = 'l', out = "graphics/table1.htm")
+stargazer(author_table, summary=FALSE, rownames=FALSE, title = "Table 1.  Total Number of Amicus Briefs by Amicus-Author Type in the Supreme Court Abortion Cases", notes = c("a. The “Other” category contains various additional types of amici, including for organizations focused on racial justice and LGBTQ rights and from the U.S. Solicitor General.", "b. The separate amicus categories do not sum to the column totals because amicus briefs can be counted in more than one category."), header=FALSE, type = 'html', notes.align = 'l', out = "graphics/table1.htm")
 ```
 
 # Table 2
