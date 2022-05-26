@@ -1,0 +1,953 @@
+---
+title: "VIF"
+author: "Amanda Konet"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, message=F, warning=F, error=F)
+
+library(tidyverse)
+library(lme4)
+library(boxr)
+library(kableExtra)
+library(broom.mixed)
+library(performance)
+```
+
+# Data
+
+Regression data used in models
+
+```{r}
+data <- #box_read(final_cases) %>% 
+  read_csv("~/Box/Amicus IV/regressions/data for Amicus IV regressions/amicus-iv-regression-data-final-cases.csv") %>% 
+  filter(justicevot != "NA") %>% 
+  mutate(justicevot = as.numeric(justicevot),
+         justiceid = as.factor(justiceid),
+         justicefem = as.factor(justicefem),
+         nonftyp2 = as.factor(nonftyp2),
+         lcdisdirfem = ifelse(lcdisdirfem==1, 0, 1),
+         lcdisdirfem = as.factor(lcdisdirfem),
+         #sgfem3 = as.factor(sgfem3), 
+         cirsplit = as.factor(cirsplit)) %>% 
+  mutate(across(c(forgauf_abortion_regret:forgauf_womens_health,
+                  legauf_abortion_regret:legauo_womens_health,
+                  lifauo_abortion_regret:medauo_womens_health,
+                  relauf_abortion_regret:relauo_womens_health,
+                  fem_abortion_regret:opp_womens_health),
+                ~replace_na(.x, 0))) %>% 
+  filter(case != "Gonzales v PP")
+
+# add case ID (second level var)
+case_ids <- data %>% distinct(case) %>% arrange(case) %>% mutate(id = 1:n())
+data <- case_ids %>% left_join(., data, by = "case")
+
+# scale
+data <- data %>%
+  select(case:cirsplit, pfemam, poppam,
+         forgauf_abortion_regret:forgauf_womens_health,
+         legauf_abortion_regret:legauo_womens_health,
+         lifauo_abortion_regret:medauo_womens_health,
+         relauf_abortion_regret:relauo_womens_health,
+         fem_abortion_regret:opp_womens_health) %>%  
+  mutate(across(c(where(is.numeric), -justicevot, -id, -cirsplit, -sgfem3),
+                ~(scale(., center=T, scale=T))))
+```
+
+# Models
+
+VIF for each frame X amici type
+
+## Feminist-org
+
+Abortion regret 
+
+```{r}
+mod_forg_1 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 + 
+                forgauf_abortion_regret + fem_abortion_regret,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_forg_1)
+
+#qqnorm(resid(mod_forg_1))
+```
+
+
+Expert evidence
+
+```{r}
+mod_forg_2 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 +  
+                forgauf_evidence + fem_evidence,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_forg_2)
+```
+
+Fetus
+
+```{r}
+mod_forg_3 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 +  
+                forgauf_fetus + fem_fetus,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_forg_3)
+```
+
+Morality & religion
+
+```{r}
+mod_forg_4 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 +  
+                forgauf_morality_religion + fem_morality_religion,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_forg_4)
+```
+
+
+Privacy
+
+```{r}
+mod_forg_5 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 +  
+                forgauf_privacy + fem_privacy,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_forg_5)
+```
+
+
+Undue burden
+
+```{r}
+mod_forg_6 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 +  
+                forgauf_undue_burden + fem_undue_burden,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_forg_6)
+```
+
+
+Women's futures
+
+```{r}
+mod_forg_7 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 + 
+                forgauf_womens_future_life + fem_womens_future_life,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_forg_7)
+```
+
+
+Women's health
+
+```{r}
+mod_forg_8 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 +  
+                forgauf_womens_health + fem_womens_health,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_forg_8)
+```
+
+## Medical (RR)
+
+Abortion regret 
+
+```{r}
+mod_medRR_1 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 + 
+                medauf_abortion_regret + fem_abortion_regret,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_medRR_1)
+```
+
+
+Expert evidence
+
+```{r}
+mod_medRR_2 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 +  
+                medauf_evidence + fem_evidence,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_medRR_2)
+```
+
+Fetus
+
+```{r}
+mod_medRR_3 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 +  
+                medauf_fetus + fem_fetus,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_medRR_3)
+```
+
+Morality & religion
+
+```{r}
+mod_medRR_4 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 +  
+                medauf_morality_religion + fem_morality_religion,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_medRR_4)
+```
+
+
+Privacy
+
+```{r}
+mod_medRR_5 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 +  
+                medauf_privacy + fem_privacy,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_medRR_5)
+```
+
+
+Undue burden
+
+```{r}
+mod_medRR_6 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 +  
+                medauf_undue_burden + fem_undue_burden,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_medRR_6)
+```
+
+
+Women's futures
+
+```{r}
+mod_medRR_7 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 + 
+                medauf_womens_future_life + fem_womens_future_life,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_medRR_7)
+```
+
+
+Women's health
+
+```{r}
+mod_medRR_8 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 +  
+                medauf_womens_health + fem_womens_health,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_medRR_8)
+```
+
+## Legal (RR)
+
+Abortion regret 
+
+```{r}
+mod_legRR_1 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 + 
+                legauf_abortion_regret + fem_abortion_regret,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_legRR_1)
+```
+
+
+Expert evidence
+
+```{r}
+mod_legRR_2 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 +  
+                legauf_evidence + fem_evidence,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_legRR_2)
+```
+
+Fetus
+
+```{r}
+mod_legRR_3 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 +  
+                legauf_fetus + fem_fetus,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_legRR_3)
+```
+
+Morality & religion
+
+```{r}
+mod_legRR_4 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 +  
+                legauf_morality_religion + fem_morality_religion,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_legRR_4)
+```
+
+
+Privacy
+
+```{r}
+mod_legRR_5 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 +  
+                legauf_privacy + fem_privacy,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_legRR_5)
+```
+
+
+Undue burden
+
+```{r}
+mod_legRR_6 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 +  
+                legauf_undue_burden + fem_undue_burden,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_legRR_6)
+```
+
+
+Women's futures
+
+```{r}
+mod_legRR_7 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 + 
+                legauf_womens_future_life + fem_womens_future_life,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_legRR_7)
+```
+
+
+Women's health
+
+```{r}
+mod_legRR_8 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 +  
+                legauf_womens_health + fem_womens_health,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_legRR_8)
+```
+
+## Religious (RR)
+
+Abortion regret 
+
+```{r}
+mod_relRR_1 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 + 
+                relauf_abortion_regret + fem_abortion_regret,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_relRR_1)
+```
+
+
+Expert evidence
+
+```{r}
+mod_relRR_2 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 +  
+                relauf_evidence + fem_evidence,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_relRR_2)
+```
+
+Fetus
+
+```{r}
+mod_relRR_3 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 +  
+                relauf_fetus + fem_fetus,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_relRR_3)
+```
+
+Morality & religion
+
+```{r}
+mod_relRR_4 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 +  
+                relauf_morality_religion + fem_morality_religion,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_relRR_4)
+```
+
+
+Privacy
+
+```{r}
+mod_relRR_5 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 +  
+                relauf_privacy + fem_privacy,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_relRR_5)
+```
+
+
+Undue burden
+
+```{r}
+mod_relRR_6 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 +  
+                relauf_undue_burden + fem_undue_burden,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_relRR_6)
+```
+
+
+Women's futures
+
+```{r}
+mod_relRR_7 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 + 
+                relauf_womens_future_life + fem_womens_future_life,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_relRR_7)
+```
+
+
+Women's health
+
+```{r}
+mod_relRR_8 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + pfemam + sgfem3 +  
+                relauf_womens_health + fem_womens_health,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_relRR_8)
+```
+
+
+## Prolife-orgs
+
+Abortion regret 
+
+```{r}
+mod_lif_1 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + sgfem3 + 
+                lifauo_abortion_regret + opp_abortion_regret,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_lif_1)
+```
+
+
+Expert evidence
+
+```{r}
+mod_lif_2 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + sgfem3 +  
+                lifauo_evidence + opp_evidence,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_lif_2)
+```
+
+Fetus
+
+```{r}
+mod_lif_3 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + sgfem3 +  
+                lifauo_fetus + opp_fetus,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_lif_3)
+```
+
+Morality & religion
+
+```{r}
+mod_lif_4 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + sgfem3 +  
+                lifauo_morality_religion + opp_morality_religion,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_lif_4)
+```
+
+
+Privacy
+
+```{r}
+mod_lif_5 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + sgfem3 +  
+                lifauo_privacy + opp_privacy,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_lif_5)
+```
+
+
+Undue burden
+
+```{r}
+mod_lif_6 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + sgfem3 +  
+                lifauo_undue_burden + opp_undue_burden,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_lif_6)
+```
+
+
+Women's futures
+
+```{r}
+mod_lif_7 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + sgfem3 + 
+                lifauo_womens_future_life + opp_womens_future_life,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_lif_7)
+```
+
+
+Women's health
+
+```{r}
+mod_lif_8 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + sgfem3 +  
+                lifauo_womens_health + opp_womens_health,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_lif_8)
+```
+
+## Medical (AA)
+
+Abortion regret 
+
+```{r}
+mod_medAA_1 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + sgfem3 + 
+                medauo_abortion_regret + opp_abortion_regret,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_medAA_1)
+```
+
+
+Expert evidence
+
+```{r}
+mod_medAA_2 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + sgfem3 +  
+                medauo_evidence + opp_evidence,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_medAA_2)
+```
+
+Fetus
+
+```{r}
+mod_medAA_3 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + sgfem3 +  
+                medauo_fetus + opp_fetus,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_medAA_3)
+```
+
+Morality & religion
+
+```{r}
+mod_medAA_4 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + sgfem3 +  
+                medauo_morality_religion + opp_morality_religion,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_medAA_4)
+```
+
+
+Privacy
+
+```{r}
+mod_medAA_5 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + sgfem3 +  
+                medauo_privacy + opp_privacy,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_medAA_5)
+```
+
+
+Undue burden
+
+```{r}
+mod_medAA_6 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + sgfem3 +  
+                medauo_undue_burden + opp_undue_burden,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_medAA_6)
+```
+
+
+Women's futures
+
+```{r}
+mod_medAA_7 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + sgfem3 + 
+                medauo_womens_future_life + opp_womens_future_life,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_medAA_7)
+```
+
+
+Women's health
+
+```{r}
+mod_medAA_8 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + sgfem3 +  
+                medauo_womens_health + opp_womens_health,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_medAA_8)
+```
+
+## Legal (AA)
+
+Abortion regret 
+
+```{r}
+mod_legAA_1 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + sgfem3 + 
+                legauo_abortion_regret + opp_abortion_regret,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_legAA_1)
+```
+
+
+Expert evidence
+
+```{r}
+mod_legAA_2 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + sgfem3 +  
+                legauo_evidence + opp_evidence,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_legAA_2)
+```
+
+Fetus
+
+```{r}
+mod_legAA_3 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + sgfem3 +  
+                legauo_fetus + opp_fetus,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_legAA_3)
+```
+
+Morality & religion
+
+```{r}
+mod_legAA_4 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + sgfem3 +  
+                legauo_morality_religion + opp_morality_religion,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_legAA_4)
+```
+
+
+Privacy
+
+```{r}
+mod_legAA_5 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + sgfem3 +  
+                legauo_privacy + opp_privacy,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_legAA_5)
+```
+
+
+Undue burden
+
+```{r}
+mod_legAA_6 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + sgfem3 +  
+                legauo_undue_burden + opp_undue_burden,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_legAA_6)
+```
+
+
+Women's futures
+
+```{r}
+mod_legAA_7 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + sgfem3 + 
+                legauo_womens_future_life + opp_womens_future_life,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_legAA_7)
+```
+
+
+Women's health
+
+```{r}
+mod_legAA_8 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + sgfem3 +  
+                legauo_womens_health + opp_womens_health,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_legAA_8)
+```
+
+
+## Religious (AA)
+
+Abortion regret 
+
+```{r}
+mod_relAA_1 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + sgfem3 + 
+                relauo_abortion_regret + opp_abortion_regret,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_relAA_1)
+```
+
+
+Expert evidence
+
+```{r}
+mod_relAA_2 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + sgfem3 +  
+                relauo_evidence + opp_evidence,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_relAA_2)
+```
+
+Fetus
+
+```{r}
+mod_relAA_3 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + sgfem3 +  
+                relauo_fetus + opp_fetus,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_relAA_3)
+```
+
+Morality & religion
+
+```{r}
+mod_relAA_4 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + sgfem3 +  
+                relauo_morality_religion + opp_morality_religion,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_relAA_4)
+```
+
+
+Privacy
+
+```{r}
+mod_relAA_5 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + sgfem3 +  
+                relauo_privacy + opp_privacy,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_relAA_5)
+```
+
+
+Undue burden
+
+```{r}
+mod_relAA_6 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + sgfem3 +  
+                relauo_undue_burden + opp_undue_burden,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_relAA_6)
+```
+
+
+Women's futures
+
+```{r}
+mod_relAA_7 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + sgfem3 + 
+                relauo_womens_future_life + opp_womens_future_life,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_relAA_7)
+```
+
+
+Women's health
+
+```{r}
+mod_relAA_8 <- glmer(justicevot ~
+                (1|id) + justicemq + justicefem + lcdisdirfem + poppam + sgfem3 +  
+                relauo_womens_health + opp_womens_health,
+              family = binomial, data = data,  
+              nAGQ = 0, control=glmerControl(
+                check.conv.grad="ignore",check.conv.singular="ignore",check.conv.hess="ignore"))
+
+check_collinearity(mod_relAA_8)
+```
