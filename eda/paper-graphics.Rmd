@@ -15,32 +15,13 @@ library(stargazer)
 library(stringi)
 box_auth()
 
-df <- box_read("949901868853", read_fun = readr::read_csv)
+#df <- box_read("949901868853", read_fun = readr::read_csv)
+df <- read_csv("~/Box/Amicus IV/regressions/data for Amicus IV regressions/amicus-iv-regression-data-final-cases.csv") 
 amicus <- box_read("947307207905", read_fun = readr::read_csv)
 ```
 
 
-# Cases per Year
-
-
-```{r}
-num_cases <- df %>%  distinct(case, decision_date=ddate2) %>% 
-  group_by(decision_date) %>% 
-  summarize(n = n())
-
-num_cases %>% 
-  ggplot(., aes(x = decision_date, y = n)) +
-  geom_line() + 
-  labs(
-    x = "Decision Year",
-    y = "Count of Amici",
-    title = "Number of Amici per Case"
-  ) +
-  theme_minimal()
-```
-
-
-# Number of Amici by Case
+# Figure 1 Number of Amici by Case
 
 Data
 
@@ -56,9 +37,9 @@ Plot
 ```{r}
 amici_ct_plt <- num_amici %>% 
   ggplot(., aes(x = year)) +
-  geom_line(aes(y = cfemam, linetype = "Feminist")) + 
-  geom_line(aes(y = coppam, linetype = "Opponent")) + 
-  scale_linetype_manual("Party", values=c("Feminist" = 1,"Opponent" = 2)) + 
+  geom_line(aes(y = cfemam, linetype = "Reproductive-Rights")) + 
+  geom_line(aes(y = coppam, linetype = "Antiabortion")) + 
+  scale_linetype_manual("Amici Type", values=c("Reproductive-Rights" = 1,"Antiabortion" = 2)) + 
   coord_cartesian(ylim = c(0, 50)) +
   labs(
     x = "Decision Year",
@@ -67,12 +48,17 @@ amici_ct_plt <- num_amici %>%
   ) + 
   theme_minimal() +
   theme(
-    title = element_text(size = 10)
+    plot.title = element_blank(),
+    title = element_text(size = 10, family = "Times New Roman"),
+    legend.text = element_text(size = 10, family = "Times New Roman"),
+    axis.text = element_text(size = 10, family = "Times New Roman"),
+    legend.position = "bottom"
   )
 
 ggsave("graphics/avg_amici_time.png",amici_ct_plt, height = 5, width = 8)
 amici_ct_plt
 ```
+
 Check spike
 ```{r}
 df %>% filter(lubridate::year(ddate2) == 1989) %>% distinct(case, ddate2, cfemam, coppam)
