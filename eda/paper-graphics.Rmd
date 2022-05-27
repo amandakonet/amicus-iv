@@ -10,14 +10,15 @@ output:
 knitr::opts_chunk$set(echo = F, warning = F, message = F, error = F)
 library(tidyverse)
 library(ggplot2)
+library(interactions)
 library(boxr)
 library(stargazer)
 library(stringi)
-box_auth()
+#box_auth()
 
 #df <- box_read("949901868853", read_fun = readr::read_csv)
 df <- read_csv("~/Box/Amicus IV/regressions/data for Amicus IV regressions/amicus-iv-regression-data-final-cases.csv") 
-amicus <- box_read("947307207905", read_fun = readr::read_csv)
+#amicus <- box_read("947307207905", read_fun = readr::read_csv)
 ```
 
 
@@ -39,7 +40,7 @@ amici_ct_plt <- num_amici %>%
   ggplot(., aes(x = year)) +
   geom_line(aes(y = cfemam, linetype = "Reproductive-Rights")) + 
   geom_line(aes(y = coppam, linetype = "Antiabortion")) + 
-  scale_linetype_manual("Amici Type", values=c("Reproductive-Rights" = 1,"Antiabortion" = 2)) + 
+  scale_linetype_manual("Amici Type:", values=c("Reproductive-Rights" = 1,"Antiabortion" = 2)) + 
   coord_cartesian(ylim = c(0, 50)) +
   labs(
     x = "Decision Year",
@@ -117,7 +118,7 @@ author_table <- author_table %>% arrange(order) %>% select(-order)
 stargazer(author_table, summary=FALSE, rownames=FALSE, title = "Table 1.  Total Number of Amicus Briefs by Amicus-Author Type in the Supreme Court Abortion Cases", notes = c("a. The “Other” category contains various additional types of amici, including for organizations focused on racial justice and LGBTQ rights and from the U.S. Solicitor General.", "b. The separate amicus categories do not sum to the column totals because amicus briefs can be counted in more than one category."), header=FALSE, type = 'html', notes.align = 'l', out = "graphics/table1.htm")
 ```
 
-# Table 2
+# Table A.1
 
 ```{r, results='asis'}
 #read in models
@@ -154,7 +155,7 @@ stargazer(forg_privacy, forg_privacy_interactions,
           out="graphics/table2.htm")
 ```
 
-# Table 3
+# Table A.2
 
 ```{r, results='asis'}
 #read in models
@@ -199,7 +200,7 @@ stargazer(forg_womenhealth, forg_womenhealth_interactions,
           out="graphics/table3.htm")
 ```
 
-# Table 4
+# Table A.3
 
 ```{r, results='asis'}
 #read in models
@@ -228,4 +229,320 @@ stargazer(forg_fetus, forg_morality, relauo_fetus, relauo_fetus_interactions, me
           out="graphics/table4.htm")
 ```
 
+# Justice ideology graphs
+
+```{r}
+data <- #box_read(final_cases) %>% 
+  read_csv("~/Box/Amicus IV/regressions/data for Amicus IV regressions/amicus-iv-regression-data-final-cases.csv") %>% 
+  filter(justicevot != "NA") %>% 
+  mutate(justicevot = as.numeric(justicevot),
+         justiceid = as.factor(justiceid),
+         justicefem = as.factor(justicefem),
+         nonftyp2 = as.factor(nonftyp2),
+         lcdisdirfem = ifelse(lcdisdirfem==1, 0, 1),
+         lcdisdirfem = as.factor(lcdisdirfem),
+         #sgfem3 = as.factor(sgfem3), 
+         cirsplit = as.factor(cirsplit)) %>% 
+  mutate(across(c(forgauf_abortion_regret:forgauf_womens_health,
+                  legauf_abortion_regret:legauo_womens_health,
+                  lifauo_abortion_regret:medauo_womens_health,
+                  relauf_abortion_regret:relauo_womens_health,
+                  fem_abortion_regret:opp_womens_health),
+                ~replace_na(.x, 0))) %>% 
+  filter(case != "Gonzales v PP")
+
+# add case ID (second level var)
+case_ids <- data %>% distinct(case) %>% arrange(case) %>% mutate(id = 1:n())
+data <- case_ids %>% left_join(., data, by = "case")
+
+# scale
+data <- data %>%
+  select(case:cirsplit, pfemam, poppam,
+         forgauf_abortion_regret:forgauf_womens_health,
+         legauf_abortion_regret:legauo_womens_health,
+         lifauo_abortion_regret:medauo_womens_health,
+         relauf_abortion_regret:relauo_womens_health,
+         fem_abortion_regret:opp_womens_health) %>%  
+  mutate(across(c(where(is.numeric), -justicevot, -id, -cirsplit, -sgfem3),
+                ~(scale(., center=T, scale=T))))
+```
+
+
+## Forg
+
+Privacy
+
+```{r}
+forg_privacy_plt <- 
+  interact_plot(forg_privacy_interactions, pred = forgauf_privacy, modx = justicemq,
+                #modx.values = c(-3.5, -1, 0, 1, 3.5),
+                # random
+                #modx.values = c(-1.65, -.55, -.08, .35, 1.5),
+                # quantiles
+                modx.values = c(-3.4, -.75, -.3, .59, 1.9),
+                modx.labels = c("More Liberal", "Moderately Liberal","Moderate",
+                                "Moderately Conservative", "More Conservative"),
+                colors = c("blue", "gray", "lightskyblue", "darksalmon", "red"),
+                #outcome.scale = "link",
+                x.label = "Frame Frequency (Scaled)",
+                y.label = "Probability of Voting in Favor of Repro-Rights",
+                legend.main = "Justice Ideology") +
+  theme_minimal() +
+  theme(
+    plot.title = element_blank(),
+    title = element_text(size = 10, family = "Times New Roman"),
+    legend.text = element_text(size = 10, family = "Times New Roman"),
+    axis.text = element_text(size = 10, family = "Times New Roman"))
+
+ggsave("graphics/forg_privacy.png", forg_privacy_plt, height = 5, width = 8)
+
+forg_privacy_plt
+```
+
+
+Undue Burden
+
+```{r}
+forg_undue_plt <- 
+  interact_plot(forg_undue_interactions, pred = forgauf_undue_burden, modx = justicemq,
+                #modx.values = c(-3.5, -1, 0, 1, 3.5),
+                # random
+                #modx.values = c(-1.65, -.55, -.08, .35, 1.5),
+                # quantiles
+                modx.values = c(-3.4, -.75, -.3, .59, 1.9),
+                modx.labels = c("More Liberal", "Moderately Liberal","Moderate",
+                                "Moderately Conservative", "More Conservative"),
+                colors = c("blue", "gray", "lightskyblue", "darksalmon", "red"),
+                #outcome.scale = "link",
+                x.label = "Frame Frequency (Scaled)",
+                y.label = "Probability of Voting in Favor of Repro-Rights",
+                legend.main = "Justice Ideology") +
+  theme_minimal() +
+  theme(
+    plot.title = element_blank(),
+    title = element_text(size = 10, family = "Times New Roman"),
+    legend.text = element_text(size = 10, family = "Times New Roman"),
+    axis.text = element_text(size = 10, family = "Times New Roman"))
+
+ggsave("graphics/forg_undue.png", forg_undue_plt, height = 5, width = 8)
+
+forg_undue_plt
+```
+
+
+Women's Health
+
+```{r}
+forg_health_plt <- 
+  interact_plot(forg_womenhealth_interactions, pred = forgauf_womens_health, modx = justicemq,
+                #modx.values = c(-3.5, -1, 0, 1, 3.5),
+                # random
+                #modx.values = c(-1.65, -.55, -.08, .35, 1.5),
+                # quantiles
+                modx.values = c(-3.4, -.75, -.3, .59, 1.9),
+                modx.labels = c("More Liberal", "Moderately Liberal","Moderate",
+                                "Moderately Conservative", "More Conservative"),
+                colors = c("blue", "gray", "lightskyblue", "darksalmon", "red"),
+                #outcome.scale = "link",
+                x.label = "Frame Frequency (Scaled)",
+                y.label = "Probability of Voting in Favor of Repro-Rights",
+                legend.main = "Justice Ideology") +
+  theme_minimal() +
+  theme(
+    plot.title = element_blank(),
+    title = element_text(size = 10, family = "Times New Roman"),
+    legend.text = element_text(size = 10, family = "Times New Roman"),
+    axis.text = element_text(size = 10, family = "Times New Roman"))
+
+ggsave("graphics/forg_health.png", forg_health_plt, height = 5, width = 8)
+
+forg_health_plt
+```
+
+
+Evidence 
+
+```{r}
+forg_evidence_plt <- 
+  interact_plot(forg_evidence_interactions, pred = forgauf_evidence, modx = justicemq,
+                #modx.values = c(-3.5, -1, 0, 1, 3.5),
+                # random
+                #modx.values = c(-1.65, -.55, -.08, .35, 1.5),
+                # quantiles
+                modx.values = c(-3.4, -.75, -.3, .59, 1.9),
+                modx.labels = c("More Liberal", "Moderately Liberal","Moderate",
+                                "Moderately Conservative", "More Conservative"),
+                colors = c("blue", "gray", "lightskyblue", "darksalmon", "red"),
+                #outcome.scale = "link",
+                x.label = "Frame Frequency (Scaled)",
+                y.label = "Probability of Voting in Favor of Repro-Rights",
+                legend.main = "Justice Ideology") +
+  theme_minimal() +
+  theme(
+    plot.title = element_blank(),
+    title = element_text(size = 10, family = "Times New Roman"),
+    legend.text = element_text(size = 10, family = "Times New Roman"),
+    axis.text = element_text(size = 10, family = "Times New Roman"))
+
+ggsave("graphics/forg_evidence.png", forg_evidence_plt, height = 5, width = 8)
+
+forg_evidence_plt
+```
+
+## RR Medical
+
+Women's health
+
+```{r}
+medauf_health_plt <- 
+  interact_plot(medauf_womenhealth_interactions, pred = medauf_womens_health, modx = justicemq,
+                #modx.values = c(-3.5, -1, 0, 1, 3.5),
+                # random
+                #modx.values = c(-1.65, -.55, -.08, .35, 1.5),
+                # quantiles
+                modx.values = c(-3.4, -.75, -.3, .59, 1.9),
+                modx.labels = c("More Liberal", "Moderately Liberal","Moderate",
+                                "Moderately Conservative", "More Conservative"),
+                colors = c("blue", "gray", "lightskyblue", "darksalmon", "red"),
+                #outcome.scale = "link",
+                x.label = "Frame Frequency (Scaled)",
+                y.label = "Probability of Voting in Favor of Repro-Rights",
+                legend.main = "Justice Ideology") +
+  theme_minimal() +
+  theme(
+    plot.title = element_blank(),
+    title = element_text(size = 10, family = "Times New Roman"),
+    legend.text = element_text(size = 10, family = "Times New Roman"),
+    axis.text = element_text(size = 10, family = "Times New Roman"))
+
+ggsave("graphics/medauf_health.png", medauf_health_plt, height = 5, width = 8)
+
+medauf_health_plt
+```
+
+
+## Prolife
+
+Undue Burden
+
+```{r}
+lifauo_undue_plt <- 
+  interact_plot(lif_undue_interactions, pred = lifauo_undue_burden, modx = justicemq,
+                #modx.values = c(-3.5, -1, 0, 1, 3.5),
+                # random
+                #modx.values = c(-1.65, -.55, -.08, .35, 1.5),
+                # quantiles
+                modx.values = c(-3.4, -.75, -.3, .59, 1.9),
+                modx.labels = c("More Liberal", "Moderately Liberal","Moderate",
+                                "Moderately Conservative", "More Conservative"),
+                colors = c("blue", "gray", "lightskyblue", "darksalmon", "red"),
+                #outcome.scale = "link",
+                x.label = "Frame Frequency (Scaled)",
+                y.label = "Probability of Voting in Favor of Repro-Rights",
+                legend.main = "Justice Ideology") +
+  theme_minimal() +
+  theme(
+    plot.title = element_blank(),
+    title = element_text(size = 10, family = "Times New Roman"),
+    legend.text = element_text(size = 10, family = "Times New Roman"),
+    axis.text = element_text(size = 10, family = "Times New Roman"))
+
+ggsave("graphics/lifauo_undue.png", lifauo_undue_plt, height = 5, width = 8)
+
+lifauo_undue_plt
+```
+
+
+## AA Medical
+
+Expert-evidence
+
+```{r}
+medauo_evidence_plt <- 
+  interact_plot(medauo_evidence_interactions, pred = medauo_evidence, modx = justicemq,
+                #modx.values = c(-3.5, -1, 0, 1, 3.5),
+                # random
+                #modx.values = c(-1.65, -.55, -.08, .35, 1.5),
+                # quantiles
+                modx.values = c(-3.4, -.75, -.3, .59, 1.9),
+                modx.labels = c("More Liberal", "Moderately Liberal","Moderate",
+                                "Moderately Conservative", "More Conservative"),
+                colors = c("blue", "gray", "lightskyblue", "darksalmon", "red"),
+                #outcome.scale = "link",
+                x.label = "Frame Frequency (Scaled)",
+                y.label = "Probability of Voting in Favor of Repro-Rights",
+                legend.main = "Justice Ideology") +
+  theme_minimal() +
+  theme(
+    plot.title = element_blank(),
+    title = element_text(size = 10, family = "Times New Roman"),
+    legend.text = element_text(size = 10, family = "Times New Roman"),
+    axis.text = element_text(size = 10, family = "Times New Roman"))
+
+ggsave("graphics/medauo_evidence.png", medauo_evidence_plt, height = 5, width = 8)
+
+medauo_evidence_plt
+```
+
+
+## AA Religious
+
+Undue burden
+
+```{r}
+relauo_undue_plt <- 
+  interact_plot(relauo_undue_interactions, pred = relauo_undue_burden, modx = justicemq,
+                #modx.values = c(-3.5, -1, 0, 1, 3.5),
+                # random
+                #modx.values = c(-1.65, -.55, -.08, .35, 1.5),
+                # quantiles
+                modx.values = c(-3.4, -.75, -.3, .59, 1.9),
+                modx.labels = c("More Liberal", "Moderately Liberal","Moderate",
+                                "Moderately Conservative", "More Conservative"),
+                colors = c("blue", "gray", "lightskyblue", "darksalmon", "red"),
+                #outcome.scale = "link",
+                x.label = "Frame Frequency (Scaled)",
+                y.label = "Probability of Voting in Favor of Repro-Rights",
+                legend.main = "Justice Ideology") +
+  theme_minimal() +
+  theme(
+    plot.title = element_blank(),
+    title = element_text(size = 10, family = "Times New Roman"),
+    legend.text = element_text(size = 10, family = "Times New Roman"),
+    axis.text = element_text(size = 10, family = "Times New Roman"))
+
+ggsave("graphics/relauo_undue.png", relauo_undue_plt, height = 5, width = 8)
+
+relauo_undue_plt
+```
+
+
+Fetus
+
+```{r}
+relauo_fetus_plt <- 
+  interact_plot(relauo_fetus_interactions, pred = relauo_fetus, modx = justicemq,
+                #modx.values = c(-3.5, -1, 0, 1, 3.5),
+                # random
+                #modx.values = c(-1.65, -.55, -.08, .35, 1.5),
+                # quantiles
+                modx.values = c(-3.4, -.75, -.3, .59, 1.9),
+                modx.labels = c("More Liberal", "Moderately Liberal","Moderate",
+                                "Moderately Conservative", "More Conservative"),
+                colors = c("blue", "gray", "lightskyblue", "darksalmon", "red"),
+                #outcome.scale = "link",
+                x.label = "Frame Frequency (Scaled)",
+                y.label = "Probability of Voting in Favor of Repro-Rights",
+                legend.main = "Justice Ideology") +
+  theme_minimal() +
+  theme(
+    plot.title = element_blank(),
+    title = element_text(size = 10, family = "Times New Roman"),
+    legend.text = element_text(size = 10, family = "Times New Roman"),
+    axis.text = element_text(size = 10, family = "Times New Roman"))
+
+ggsave("graphics/relauo_fetus.png", relauo_fetus_plt, height = 5, width = 8)
+
+relauo_fetus_plt
+```
 
